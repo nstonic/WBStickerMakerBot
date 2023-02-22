@@ -52,7 +52,7 @@ def show_active_supplies(call: CallbackQuery):
         if not supply.done:
             supplies_markup.add(
                 InlineKeyboardButton(
-                    text=f'{supply.name} | (создана: {supply.create_at.strftime("%d.%m.%Y")})',
+                    text=f'{supply.name} | {supply.sup_id})',
                     callback_data=f'supply_{supply.sup_id}'
                 )
             )
@@ -95,7 +95,7 @@ def show_orders(call: CallbackQuery):
     )
     bot.send_message(
         chat_id=call.message.chat.id,
-        text=compile_orders_to_one_message(orders),
+        text=f'Заказы по поставке {supply_id}:\n\n{compile_orders_to_one_message(orders)}',
         reply_markup=order_markup
     )
 
@@ -156,7 +156,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     for supply in supplies_subset[:50]:
         supplies_markup.add(
             InlineKeyboardButton(
-                text=f'{supply.name} | (создана: {supply.create_at.strftime("%d.%m.%Y")}) | {is_active[supply.done]}',
+                text=f'{supply.name} | {supply.sup_id} | {is_active[supply.done]}',
                 callback_data=f'supply_{supply.sup_id}'
             )
         )
@@ -183,15 +183,15 @@ def compile_orders_to_one_message(orders: list[Order]) -> str:
     """Собирает все артикулы из заказов и компилирует их в одно сообщение"""
     if orders:
         articles = [order.article for order in orders]
-        message_text = '\n'.join(
+        compiled_orders = '\n'.join(
             [
                 f'{article} - {count}шт.'
-                for article, count in Counter(articles.sort()).items()
+                for article, count in Counter(sorted(articles)).items()
             ]
         )
     else:
-        message_text = 'В данной поставе нет заказов'
-    return message_text
+        compiled_orders = 'В данной поставе нет заказов'
+    return compiled_orders
 
 
 if __name__ == '__main__':
