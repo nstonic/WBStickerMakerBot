@@ -1,6 +1,5 @@
 import json
 import os
-from collections import Counter
 
 import telebot
 from dotenv import load_dotenv
@@ -11,38 +10,35 @@ from telebot.types import (Message,
 
 from api import get_supplies_response, get_orders_response
 from classes import Supply, Order
+from helpers import join_orders, get_admin_id, get_user_role
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
 
 
-def join_orders(orders: list[Order]) -> str:
-    """Собирает все артикулы из заказов и компилирует их в одно сообщение"""
-    if orders:
-        articles = [order.article for order in orders]
-        compiled_orders = '\n'.join(
-            [
-                f'{article} - {count}шт.'
-                for article, count in Counter(sorted(articles)).items()
-            ]
-        )
-    else:
-        compiled_orders = 'В данной поставе нет заказов'
-    return compiled_orders
+def check_registration(func):
+    """Декоратор проверяет регистрацию пользователя, отправившего сообщение.
+     Если пользователь не зарегистрирован, то запускает процесс регистрации"""
+
+    def wrapper(*args, **kwargs):
+        if isinstance(args[0], Message):
+            message = args[0]
+        elif isinstance(args[0], CallbackQuery):
+            message = args[0].message
+        else:
+            return
+
+        if not get_user_role(message.chat.id):
+            ask_for_registration(message)
+        else:
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
-def get_user_role(user_id: int):
-    """Ищет пользователя в зарегистрированных и возвращает его роль, если находит"""
-    with open('users.json') as file:
-        users = json.load(file)
-    return users.get(str(user_id))
-
-
-def ask_for_register(message):
+def ask_for_registration(message):
+    """Отправляет запрос на регистрацию администратору"""
     user_id = message.chat.id
-    with open('users.json') as file:
-        users = json.load(file)
-    admin_id = int(next(filter(lambda user: user[1] == 'admin', users.items()))[0])
     register_markup = InlineKeyboardMarkup(row_width=2)
     register_markup.add(
         InlineKeyboardButton(
@@ -55,40 +51,14 @@ def ask_for_register(message):
         )
     )
     bot.send_message(
-        admin_id,
+        chat_id=get_admin_id(),
         text=f'Запрос на регистрацию пользователя\n{message.from_user.full_name}',
         reply_markup=register_markup
     )
-
-
-def check_registration(func):
-    """Декоратор для проверки регистрации"""
-
-    def wrapper(*args, **kwargs):
-        if isinstance(args[0], Message):
-            message = args[0]
-        elif isinstance(args[0], CallbackQuery):
-            message = args[0].message
-        else:
-            return
-
-        if not get_user_role(message.chat.id):
-            ask_for_register(message)
-            bot.send_message(
-                message.chat.id,
-                text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.'
-            )
-            try:
-                bot.answer_callback_query(
-                    args[0].id,
-                    text='Вы не зарегистрированы'
-                )
-            except telebot.apihelper.ApiTelegramException:
-                pass
-            return
-        return func(*args, **kwargs)
-
-    return wrapper
+    bot.send_message(
+        chat_id=user_id,
+        text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.'
+    )
 
 
 @bot.message_handler(commands=['start'])
@@ -198,6 +168,7 @@ def get_supplies_number(call: CallbackQuery):
     )
 
 
+@check_registration
 def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
     Отображает требуемое число последних поставок
@@ -287,7 +258,7 @@ def register_user(call: CallbackQuery):
 @check_registration
 def deny_registration(call: CallbackQuery):
     """
-    Регистрирует пользователя
+    Отклоняет запрос регистрации
     """
     user_id = call.data.lstrip('deny_')
     bot.answer_callback_query(
