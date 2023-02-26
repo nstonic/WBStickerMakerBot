@@ -10,13 +10,13 @@ def prepare_db(owner_id: int, owner_full_name: str):
         where(models.User.is_admin, models.User.id != owner_id). \
         execute()
 
-    models.User.get_or_create(
+    models.User.insert(
         id=owner_id,
         defaults={
             'full_name': owner_full_name,
             'is_admin': True
         }
-    )
+    ).on_conflict_ignore().execute()
 
 
 def check_user_registration(user_id: int) -> bool:
