@@ -1,10 +1,12 @@
-import json
 from collections import Counter
 
-from classes import Order
+from requests import Response
+
+import api
+import db_client
 
 
-def join_orders(orders: list[Order]) -> str:
+def join_orders(orders: list[api.Order]) -> str:
     """Собирает все артикулы из заказов и объединяет их в одно сообщение"""
     if orders:
         articles = [order.article for order in orders]
@@ -19,12 +21,12 @@ def join_orders(orders: list[Order]) -> str:
     return joined_orders
 
 
-
-def get_admin_id() -> int:
-    """Получает id администратора"""
-    with open('users.json') as file:
-        users = json.load(file)
-    return int(next(filter(lambda user: user[1] == 'admin', users.items()))[0])
-
-
-
+def fetch_supplies(response: Response, only_active: bool = True) -> list[api.Supply]:
+    """Собирает поставки в список и записывает их в БД"""
+    supplies = []
+    for supply in response.json()["supplies"]:
+        if not supply['done'] or only_active is False:
+            supply = api.Supply.parse_obj(supply)
+            supplies.append(supply)
+            db_client.create_supply(supply)
+    return supplies

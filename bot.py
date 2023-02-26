@@ -7,13 +7,9 @@ from telebot.types import (Message,
                            InlineKeyboardButton,
                            CallbackQuery)
 
-from api import get_supplies_response, get_orders_response
-from classes import Supply, Order
-from db_client import (prepare_db,
-                       create_user,
-                       check_user_registration,
-                       get_admin_id)
-from helpers import join_orders
+import api
+import db_client
+from helpers import join_orders, fetch_supplies
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -31,7 +27,7 @@ def check_registration(func):
         else:
             return
 
-        if not check_user_registration(message.chat.id):
+        if not db_client.check_user_registration(message.chat.id):
             ask_for_registration(message)
         else:
             return func(*args, **kwargs)
@@ -55,7 +51,7 @@ def ask_for_registration(message):
         )
     )
     bot.send_message(
-        chat_id=get_admin_id(),
+        chat_id=db_client.get_admin_id(),
         text=f'Запрос на регистрацию пользователя\n{message.from_user.full_name}',
         reply_markup=register_markup
     )
@@ -88,18 +84,15 @@ def show_active_supplies(call: CallbackQuery):
     """
     Отображает текущие незакрытые поставки
     """
-    if response := get_supplies_response(os.environ['WB_API_KEY']):
-        supplies = [
-            Supply.parse_obj(supply)
-            for supply in response.json()["supplies"]
-        ]
+    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
+        active_supplies = fetch_supplies(response)
         bot.answer_callback_query(call.id, 'Поставки загружены')
     else:
         bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
         return
 
     supplies_markup = InlineKeyboardMarkup()
-    for supply in supplies:
+    for supply in active_supplies:
         if not supply.done:
             supplies_markup.add(
                 InlineKeyboardButton(
@@ -129,16 +122,18 @@ def show_orders(call: CallbackQuery):
     """
 
     supply_id = call.data.lstrip('supply_')
-    response = get_orders_response(
+    response = api.get_orders_response(
         api_key=os.environ['WB_API_KEY'],
         supply_id=supply_id
     )
-    bot.answer_callback_query(call.id, 'Заказы')
+    bot.answer_callback_query(call.id, 'Идёт обработка. Подождите')
 
-    orders = [
-        Order.parse_obj(order)
-        for order in response.json()['orders']
-    ]
+    orders = []
+    for order in response.json()['orders']:
+        order = api.Order.parse_obj(order)
+        orders.append(order)
+        db_client.create_order(order, supply_id)
+
     order_markup = InlineKeyboardMarkup()
     order_markup.add(
         InlineKeyboardButton(
@@ -177,12 +172,9 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
     Отображает требуемое число последних поставок
     """
-    if response := get_supplies_response(os.environ['WB_API_KEY']):
+    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
         supplies = sorted(
-            [
-                Supply.parse_obj(supply)
-                for supply in response.json()["supplies"]
-            ],
+            fetch_supplies(response),
             key=lambda supply: supply.create_at
         )[::-1]
     else:
@@ -236,7 +228,7 @@ def register_user(call: CallbackQuery):
     Регистрирует пользователя
     """
     user_id = int(call.data.lstrip('register_'))
-    create_user(
+    db_client.create_user(
         user_id=user_id,
         user_full_name=call.from_user.full_name
     )
@@ -268,7 +260,7 @@ def deny_registration(call: CallbackQuery):
 
 
 if __name__ == '__main__':
-    prepare_db(
+    db_client.prepare_db(
         owner_id=int(os.environ['OWNER_ID']),
         owner_full_name=os.environ['OWNER_FULL_NAME']
     )

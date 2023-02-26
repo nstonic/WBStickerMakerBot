@@ -33,12 +33,12 @@ def check_response(response: Response):
 def retry_on_network_error(func):
     """Декоратор повторяет запрос, если произошел разрыв соединения"""
 
-    def wrapper(url):
+    def wrapper(*args, **kwargs):
         delay = 0
         while True:
             delay = min(delay, 30)
             try:
-                return func(url)
+                return func(*args, **kwargs)
             except (ChunkedEncodingError, ConnectionError):
                 time.sleep(delay)
                 delay += 5
