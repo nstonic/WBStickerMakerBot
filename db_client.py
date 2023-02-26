@@ -29,12 +29,8 @@ def create_user(user_id: int, user_full_name: str) -> models.BaseSQLLiteModel:
     return models.User.create(id=user_id, full_name=user_full_name)
 
 
-def get_admin_id() -> int:
-    admin = models.User.get(models.User.is_admin)
-    return admin.id
-
-
 def create_supply(supply: api.Supply):
+    """Добавляет поставку в базу"""
     models.Supply.insert(
         id=supply.sup_id,
         name=supply.name,
@@ -45,6 +41,8 @@ def create_supply(supply: api.Supply):
 
 
 def create_order(order: api.Order, supply_id: str):
+    """Загружает в базу все заказы по данной поставке"""
+    models.Order.delete().where(models.Order.supply == supply_id)
     models.Order.insert(
         id=order.order_id,
         supply=supply_id,
@@ -56,4 +54,4 @@ def create_order(order: api.Order, supply_id: str):
         models.SKU.insert(
             text=sku,
             order=order.order_id
-        ).on_conflict_replace().execute()
+        ).on_conflict_ignore().execute()

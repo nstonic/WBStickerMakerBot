@@ -49,7 +49,7 @@ def ask_for_registration(message):
         )
     )
     bot.send_message(
-        chat_id=db_client.get_admin_id(),
+        chat_id=os.environ['OWNER_ID'],
         text=f'Запрос на регистрацию пользователя\n{message.from_user.full_name}',
         reply_markup=register_markup
     )

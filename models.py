@@ -40,5 +40,5 @@ class Order(BaseSQLLiteModel):
 
 
 class SKU(BaseSQLLiteModel):
-    text = CharField(max_length=128)
+    text = CharField(primary_key=True, max_length=128)
     order = ForeignKeyField(Order, backref='skus', on_delete='CASCADE')
