@@ -1,4 +1,3 @@
-import json
 import os
 
 import telebot
@@ -10,7 +9,11 @@ from telebot.types import (Message,
 
 from api import get_supplies_response, get_orders_response
 from classes import Supply, Order
-from helpers import join_orders, get_admin_id, get_user_role
+from db_client import (prepare_db,
+                       create_user,
+                       check_user_registration,
+                       get_admin_id)
+from helpers import join_orders
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -28,7 +31,7 @@ def check_registration(func):
         else:
             return
 
-        if not get_user_role(message.chat.id):
+        if not check_user_registration(message.chat.id):
             ask_for_registration(message)
         else:
             return func(*args, **kwargs)
@@ -40,6 +43,7 @@ def ask_for_registration(message):
     """Отправляет запрос на регистрацию администратору"""
     user_id = message.chat.id
     register_markup = InlineKeyboardMarkup(row_width=2)
+
     register_markup.add(
         InlineKeyboardButton(
             text='Одобрить',
@@ -231,19 +235,17 @@ def register_user(call: CallbackQuery):
     """
     Регистрирует пользователя
     """
-    user_id = call.data.lstrip('register_')
-    with open('users.json') as file:
-        users = json.load(file)
-    users[user_id] = "manager"
-    with open('users.json', 'w') as file:
-        json.dump(users, file, ensure_ascii=False, indent=4)
-
+    user_id = int(call.data.lstrip('register_'))
+    create_user(
+        user_id=user_id,
+        user_full_name=call.from_user.full_name
+    )
     bot.answer_callback_query(
         call.id,
         text='Пользователь зарегистрирован'
     )
     bot.send_message(
-        int(user_id),
+        user_id,
         text='Ваша регистрация одобрена. Можно начать работать.\n/start'
     )
 
@@ -266,4 +268,8 @@ def deny_registration(call: CallbackQuery):
 
 
 if __name__ == '__main__':
+    prepare_db(
+        owner_id=int(os.environ['OWNER_ID']),
+        owner_full_name=os.environ['OWNER_FULL_NAME']
+    )
     bot.infinity_polling()
