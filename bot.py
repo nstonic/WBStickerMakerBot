@@ -2,10 +2,8 @@ import os
 
 import telebot
 from dotenv import load_dotenv
-from telebot.types import (Message,
-                           InlineKeyboardMarkup,
-                           InlineKeyboardButton,
-                           CallbackQuery)
+from telebot.types import Message, CallbackQuery
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import api
 import db_client

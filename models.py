@@ -1,12 +1,12 @@
 import datetime
 
-from peewee import (SqliteDatabase,
-                    Model,
-                    IntegerField,
-                    CharField,
-                    DateTimeField,
-                    BooleanField,
-                    ForeignKeyField)
+from peewee import SqliteDatabase
+from peewee import Model
+from peewee import IntegerField
+from peewee import CharField
+from peewee import DateTimeField
+from peewee import BooleanField
+from peewee import ForeignKeyField
 
 db = SqliteDatabase('bot.db')
 
