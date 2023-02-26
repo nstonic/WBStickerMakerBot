@@ -25,7 +25,7 @@ class User(BaseSQLLiteModel):
 
 
 class Supply(BaseSQLLiteModel):
-    id = CharField(max_length=128)
+    id = CharField(primary_key=True, max_length=128)
     name = CharField(max_length=128)
     closed_at = DateTimeField(null=True)
     create_at = DateTimeField()

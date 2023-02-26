@@ -21,12 +21,28 @@ def join_orders(orders: list[api.Order]) -> str:
     return joined_orders
 
 
-def fetch_supplies(response: Response, only_active: bool = True) -> list[api.Supply]:
+def fetch_supplies(
+        response: Response,
+        only_active: bool = True,
+        number_of_supplies: int = 50) -> list[api.Supply]:
     """Собирает поставки в список и записывает их в БД"""
+
     supplies = []
-    for supply in response.json()["supplies"]:
+    for supply in response.json()["supplies"][::-1]:
         if not supply['done'] or only_active is False:
             supply = api.Supply.parse_obj(supply)
             supplies.append(supply)
             db_client.create_supply(supply)
+        if len(supplies) == number_of_supplies:
+            break
     return supplies
+
+
+def fetch_orders(response: Response, supply_id: str) -> list[api.Order]:
+    """Собирает заказы в список и записывает их в БД"""
+    orders = []
+    for order in response.json()['orders']:
+        order = api.Order.parse_obj(order)
+        orders.append(order)
+        db_client.create_order(order, supply_id)
+    return orders

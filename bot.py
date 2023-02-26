@@ -9,7 +9,7 @@ from telebot.types import (Message,
 
 import api
 import db_client
-from helpers import join_orders, fetch_supplies
+from helpers import join_orders, fetch_supplies, fetch_orders
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -128,11 +128,7 @@ def show_orders(call: CallbackQuery):
     )
     bot.answer_callback_query(call.id, 'Идёт обработка. Подождите')
 
-    orders = []
-    for order in response.json()['orders']:
-        order = api.Order.parse_obj(order)
-        orders.append(order)
-        db_client.create_order(order, supply_id)
+    orders = fetch_orders(response, supply_id)
 
     order_markup = InlineKeyboardMarkup()
     order_markup.add(
@@ -172,17 +168,8 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
     Отображает требуемое число последних поставок
     """
-    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
-        supplies = sorted(
-            fetch_supplies(response),
-            key=lambda supply: supply.create_at
-        )[::-1]
-    else:
-        bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
-        return
-
     try:
-        supplies_subset = supplies[:int(message.text)][::-1]
+        number_of_supplies = int(message.text)
     except ValueError:
         bot.clear_reply_handlers(call.message)
         bot.register_next_step_handler(
@@ -196,17 +183,29 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
         )
         return
 
+    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
+        bot.answer_callback_query(call.id, 'Идёт загрузка. Подождите')
+        supplies = sorted(
+            fetch_supplies(
+                response,
+                only_active=False,
+                number_of_supplies=number_of_supplies
+            ),
+            key=lambda supply: supply.create_at
+        )
+    else:
+        bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
+        return
+
     is_active = {0: 'Открыта', 1: 'Закрыта'}
     supplies_markup = InlineKeyboardMarkup()
-    for supply in supplies_subset[:50]:
+    for supply in supplies:
         supplies_markup.add(
             InlineKeyboardButton(
                 text=f'{supply.name} | {supply.sup_id} | {is_active[supply.done]}',
                 callback_data=f'supply_{supply.sup_id}'
             )
         )
-
-    bot.answer_callback_query(call.id, f'Загружено {len(supplies_markup.keyboard)} поставок')
 
     supplies_markup.add(
         InlineKeyboardButton(
