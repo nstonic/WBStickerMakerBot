@@ -182,10 +182,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
             key=lambda supply: supply.create_at
         )[::-1]
     else:
-        try:
-            bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
-        except telebot.apihelper.ApiTelegramException:
-            pass
+        bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
         return
 
     try:
@@ -213,10 +210,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
             )
         )
 
-    try:
-        bot.answer_callback_query(call.id, f'Загружено {len(supplies_markup.keyboard)} поставок')
-    except telebot.apihelper.ApiTelegramException:
-        pass
+    bot.answer_callback_query(call.id, f'Загружено {len(supplies_markup.keyboard)} поставок')
 
     supplies_markup.add(
         InlineKeyboardButton(

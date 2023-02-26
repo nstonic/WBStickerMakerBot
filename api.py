@@ -1,7 +1,10 @@
 import requests
+from requests.exceptions import HTTPError, JSONDecodeError
 from requests import Response
+from errors import check_response, retry_on_network_error, WBAPIError
 
 
+@retry_on_network_error
 def get_supplies_response(api_key: str) -> Response | None:
     """
     Получает список поставок
@@ -19,9 +22,9 @@ def get_supplies_response(api_key: str) -> Response | None:
             params=params
         )
         try:
-            response.raise_for_status()
-        except requests.exceptions.HTTPError:
-            return
+            check_response(response)
+        except (HTTPError, JSONDecodeError, WBAPIError) as ex:
+            print(ex)
         if response.json()["supplies"] == params["limit"]:
             params["next"] = response.json()["next"]
             continue
@@ -29,6 +32,7 @@ def get_supplies_response(api_key: str) -> Response | None:
             return response
 
 
+@retry_on_network_error
 def get_orders_response(api_key: str, supply_id: str) -> Response | None:
     """
     Получает список заказов по данной поставке
@@ -39,8 +43,24 @@ def get_orders_response(api_key: str, supply_id: str) -> Response | None:
         headers=headers
     )
     try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError:
-        return
+        check_response(response)
+    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
+        print(ex)
     else:
         return response
+
+
+@retry_on_network_error
+def get_product_response(api_key: str, articles: str) -> Response | None:
+    headers = {"Authorization": api_key}
+    for article in sorted(articles):
+        request_json = {"vendorCodes": [article]}
+        response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
+                                 json=request_json,
+                                 headers=headers)
+        try:
+            check_response(response)
+        except (HTTPError, JSONDecodeError, WBAPIError) as ex:
+            print(ex)
+        else:
+            return response
