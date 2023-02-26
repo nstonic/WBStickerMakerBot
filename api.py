@@ -2,6 +2,7 @@ import datetime
 
 import requests
 from pydantic import BaseModel, Field
+from dataclasses import dataclass
 from requests.exceptions import HTTPError, JSONDecodeError
 from requests import Response
 from errors import check_response, retry_on_network_error, WBAPIError
@@ -20,6 +21,12 @@ class Order(BaseModel):
     article: str
     created_at: datetime.datetime = Field(alias='createdAt')
     skus: list
+
+
+@dataclass
+class Product:
+    name: str
+    article: str
 
 
 @retry_on_network_error
@@ -43,6 +50,7 @@ def get_supplies_response(api_key: str) -> Response | None:
             check_response(response)
         except (HTTPError, JSONDecodeError, WBAPIError) as ex:
             print(ex)
+            return
         if response.json()["supplies"] == params["limit"]:
             params["next"] = response.json()["next"]
             continue
@@ -64,21 +72,41 @@ def get_orders_response(api_key: str, supply_id: str) -> Response | None:
         check_response(response)
     except (HTTPError, JSONDecodeError, WBAPIError) as ex:
         print(ex)
+        return
     else:
         return response
 
 
 @retry_on_network_error
-def get_product_response(api_key: str, articles: str) -> Response | None:
+def get_product(api_key: str, article: str) -> Product | None:
+    """
+    Получает описание товара по артикулу
+    """
     headers = {"Authorization": api_key}
-    for article in sorted(articles):
-        request_json = {"vendorCodes": [article]}
-        response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
-                                 json=request_json,
-                                 headers=headers)
-        try:
-            check_response(response)
-        except (HTTPError, JSONDecodeError, WBAPIError) as ex:
-            print(ex)
-        else:
-            return response
+    request_json = {"vendorCodes": [article]}
+    response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
+                             json=request_json,
+                             headers=headers)
+    try:
+        check_response(response)
+    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
+        print(ex)
+        return
+
+    founded_product_card = next(
+        filter(
+            lambda product: product["vendorCode"] == article,
+            response.json()["data"]
+        )
+    )
+    name = next(
+        filter(
+            lambda characteristic: characteristic.get('Наименование'),
+            founded_product_card["characteristics"]
+        )
+    ).get('Наименование')
+
+    return Product(
+        name=name,
+        article=article
+    )

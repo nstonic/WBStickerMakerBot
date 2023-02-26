@@ -3,7 +3,7 @@ import datetime
 from peewee import SqliteDatabase
 from peewee import Model
 from peewee import IntegerField
-from peewee import CharField
+from peewee import CharField, TextField
 from peewee import DateTimeField
 from peewee import BooleanField
 from peewee import ForeignKeyField
@@ -32,10 +32,15 @@ class Supply(BaseSQLLiteModel):
     done = BooleanField()
 
 
+class Product(BaseSQLLiteModel):
+    article = CharField(max_length=128, primary_key=True)
+    name = TextField()
+
+
 class Order(BaseSQLLiteModel):
     id = IntegerField(primary_key=True)
     supply = ForeignKeyField(Supply, backref='orders', on_delete='CASCADE')
-    article = CharField(max_length=128)
+    article = ForeignKeyField(Product, backref='orders', on_delete='SET NULL', null=True)
     created_at = DateTimeField()
 
 

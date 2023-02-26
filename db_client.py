@@ -1,10 +1,14 @@
+import os
+
 import api
 import models
 
 
 def prepare_db(owner_id: int, owner_full_name: str):
     """Создает базу данных. Регистрирует владельца как единственного администратора"""
-    models.db.create_tables([models.User, models.Supply, models.Order, models.SKU])
+    models.db.create_tables(
+        [models.User, models.Supply, models.Order, models.SKU, models.Product]
+    )
 
     models.User.update({'is_admin': False}). \
         where(models.User.is_admin, models.User.id != owner_id). \
@@ -12,10 +16,8 @@ def prepare_db(owner_id: int, owner_full_name: str):
 
     models.User.insert(
         id=owner_id,
-        defaults={
-            'full_name': owner_full_name,
-            'is_admin': True
-        }
+        full_name=owner_full_name,
+        is_admin=True
     ).on_conflict_ignore().execute()
 
 
@@ -42,6 +44,14 @@ def create_supply(supply: api.Supply):
 
 def create_order(order: api.Order, supply_id: str):
     """Загружает в базу все заказы по данной поставке"""
+    product = api.get_product(
+        os.environ['WB_API_KEY'],
+        article=order.article)
+    models.Product.insert(
+        article=order.article,
+        name=product.name
+    ).on_conflict_ignore().execute()
+
     models.Order.delete().where(models.Order.supply == supply_id)
     models.Order.insert(
         id=order.order_id,

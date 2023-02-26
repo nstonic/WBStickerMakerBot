@@ -62,6 +62,7 @@ def ask_for_registration(message):
 @bot.message_handler(commands=['start'])
 @check_registration
 def start(message: Message):
+    bot.delete_message(message.chat.id, message.id)
     supplies_markup = InlineKeyboardMarkup()
     supplies_markup.add(
         InlineKeyboardButton(
