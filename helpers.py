@@ -19,6 +19,12 @@ def join_orders(orders: list[Order]) -> str:
     return joined_orders
 
 
+def get_user_role(user_id: int) -> str:
+    """Ищет пользователя в зарегистрированных и возвращает его роль, если находит"""
+    with open('users.json') as file:
+        users = json.load(file)
+    return users.get(str(user_id))
+
 
 def get_admin_id() -> int:
     """Получает id администратора"""
