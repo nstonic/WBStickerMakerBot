@@ -23,7 +23,6 @@ class Order(BaseModel):
     order_id: int = Field(alias='id')
     article: str
     created_at: datetime.datetime = Field(alias='createdAt')
-    # skus: list
 
     def to_tuple(self) -> tuple:
         return self.order_id, self.article, self.created_at
@@ -116,3 +115,41 @@ def get_product(api_key: str, article: str) -> tuple | None:
     )['Наименование']
 
     return name, article
+
+
+@retry_on_network_error
+def get_sticker_response(api_key: str, orders: list[Order]):
+    headers = {"Authorization": api_key}
+    json_ = {"orders": [order.order_id for order in orders]}
+    params = {
+        "type": "png",
+        "width": 58,
+        "height": 40
+    }
+
+    response = requests.post(
+        "https://suppliers-api.wildberries.ru/api/v3/orders/stickers",
+        headers=headers,
+        json=json_,
+        params=params
+    )
+
+    try:
+        check_response(response)
+    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
+        print(ex)
+        return
+
+    return response
+    # print(
+    #     [
+    #         {sticker['orderId']:sticker['file']}
+    #         for sticker in response.json()['stickers']
+    #     ]
+    # )
+
+    # for order in orders:
+    #     for sticker in response.json()["stickers"]:
+    #         if sticker["orderId"] == order.order_id:
+    #             order.sticker = sticker
+    #             break
