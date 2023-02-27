@@ -55,10 +55,7 @@ def bulk_insert_orders(orders: list[api.Order], supply_id: str):
     # with models.db.atomic():
     #     models.Product.insert_many(rows=products, fields=product_fields).on_conflict_replace().execute()
 
-    orders = [
-        (order.order_id, supply_id, order.article, order.created_at)
-        for order in orders
-    ]
-    order_fields = [models.Order.id, models.Order.supply, models.Order.article, models.Order.created_at]
+    orders = [(*order.to_tuple(), supply_id) for order in orders]
+    order_fields = [models.Order.id, models.Order.article, models.Order.created_at, models.Order.supply]
     with models.db.atomic():
         models.Order.insert_many(rows=orders, fields=order_fields).on_conflict_replace().execute()

@@ -37,12 +37,3 @@ def fetch_supplies(
             break
     return supplies
 
-
-def fetch_orders(response: Response, supply_id: str) -> list[api.Order]:
-    """Собирает заказы в список и записывает их в БД"""
-    orders = []
-    for order in response.json()['orders']:
-        order = api.Order.parse_obj(order)
-        orders.append(order)
-    db_client.bulk_insert_orders(orders, supply_id)
-    return orders

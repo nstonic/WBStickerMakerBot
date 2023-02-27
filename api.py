@@ -3,8 +3,8 @@ import datetime
 import requests
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
-from requests.exceptions import HTTPError, JSONDecodeError
-from requests import Response
+from requests.exceptions import HTTPError
+from requests import Response, JSONDecodeError
 from errors import check_response, retry_on_network_error, WBAPIError
 
 
@@ -15,12 +15,18 @@ class Supply(BaseModel):
     done: bool
     sup_id: str = Field(alias='id')
 
+    def to_tuple(self):
+        return self.sup_id, self.name, self.closed_at, self.create_at, self.done
+
 
 class Order(BaseModel):
     order_id: int = Field(alias='id')
     article: str
     created_at: datetime.datetime = Field(alias='createdAt')
-    skus: list
+    # skus: list
+
+    def to_tuple(self) -> tuple:
+        return self.order_id, self.article, self.created_at
 
 
 @dataclass
@@ -62,6 +68,9 @@ def get_supplies_response(api_key: str) -> Response | None:
 def get_orders_response(api_key: str, supply_id: str) -> Response | None:
     """
     Получает список заказов по данной поставке
+    :param api_key:
+    :param supply_id:
+    :return:
     """
     headers = {"Authorization": api_key}
     response = requests.get(
@@ -93,7 +102,7 @@ def get_product(api_key: str, article: str) -> tuple | None:
         print(ex)
         return
 
-    founded_product_card = next(
+    wanted_product_card = next(
         filter(
             lambda product: product["vendorCode"] == article,
             response.json()["data"]
@@ -102,8 +111,8 @@ def get_product(api_key: str, article: str) -> tuple | None:
     name = next(
         filter(
             lambda characteristic: characteristic.get('Наименование'),
-            founded_product_card["characteristics"]
+            wanted_product_card["characteristics"]
         )
-    ).get('Наименование')
+    )['Наименование']
 
     return name, article

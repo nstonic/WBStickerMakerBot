@@ -7,7 +7,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import api
 import db_client
-from helpers import join_orders, fetch_supplies, fetch_orders
+from helpers import join_orders, fetch_supplies
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -125,10 +125,7 @@ def show_orders(call: CallbackQuery):
         api_key=os.environ['WB_API_KEY'],
         supply_id=supply_id
     )
-    bot.answer_callback_query(call.id, 'Идёт обработка. Подождите')
-
-    orders = fetch_orders(response, supply_id)
-
+    orders = [api.Order.parse_obj(order) for order in response.json()['orders']]
     order_markup = InlineKeyboardMarkup()
     order_markup.add(
         InlineKeyboardButton(
@@ -141,6 +138,9 @@ def show_orders(call: CallbackQuery):
         text=f'Заказы по поставке {supply_id}:\n\n{join_orders(orders)}',
         reply_markup=order_markup
     )
+
+    db_client.bulk_insert_orders(orders, supply_id)
+    bot.answer_callback_query(call.id, 'Заказы загружены')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('more_supplies'))
