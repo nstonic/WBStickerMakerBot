@@ -257,9 +257,27 @@ def deny_registration(call: CallbackQuery):
     )
 
 
-if __name__ == '__main__':
+@bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
+@check_registration
+def send_stickers(call: CallbackQuery):
+    supply_id = call.data.lstrip('stickers_for_supply_')
+    bot.answer_callback_query(call.id, 'Стикеры готовы')
+    bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+
+
+def main():
+    os.makedirs("barcodes", exist_ok=True)
+    try:
+        owner_id = int(os.environ['OWNER_ID'])
+    except ValueError:
+        print('OWNER_ID должен быть целым числом')
+        return
     db_client.prepare_db(
-        owner_id=int(os.environ['OWNER_ID']),
+        owner_id=owner_id,
         owner_full_name=os.environ['OWNER_FULL_NAME']
     )
     bot.infinity_polling()
+
+
+if __name__ == '__main__':
+    main()
