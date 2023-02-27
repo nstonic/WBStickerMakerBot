@@ -32,7 +32,7 @@ def fetch_supplies(
         if not supply['done'] or only_active is False:
             supply = api.Supply.parse_obj(supply)
             supplies.append(supply)
-            db_client.create_supply(supply)
+            db_client.insert_supply(supply)
         if len(supplies) == number_of_supplies:
             break
     return supplies
@@ -44,5 +44,5 @@ def fetch_orders(response: Response, supply_id: str) -> list[api.Order]:
     for order in response.json()['orders']:
         order = api.Order.parse_obj(order)
         orders.append(order)
-        db_client.create_order(order, supply_id)
+    db_client.bulk_insert_orders(orders, supply_id)
     return orders

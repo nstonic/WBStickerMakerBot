@@ -78,7 +78,7 @@ def get_orders_response(api_key: str, supply_id: str) -> Response | None:
 
 
 @retry_on_network_error
-def get_product(api_key: str, article: str) -> Product | None:
+def get_product(api_key: str, article: str) -> tuple | None:
     """
     Получает описание товара по артикулу
     """
@@ -106,7 +106,4 @@ def get_product(api_key: str, article: str) -> Product | None:
         )
     ).get('Наименование')
 
-    return Product(
-        name=name,
-        article=article
-    )
+    return name, article

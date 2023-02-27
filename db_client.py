@@ -1,5 +1,3 @@
-import os
-
 import api
 import models
 
@@ -26,12 +24,12 @@ def check_user_registration(user_id: int) -> bool:
     return models.User.get_or_none(models.User.id == user_id)
 
 
-def create_user(user_id: int, user_full_name: str) -> models.BaseSQLLiteModel:
+def insert_user(user_id: int, user_full_name: str) -> models.BaseSQLLiteModel:
     """Регистрирует пользователя в базе"""
-    return models.User.create(id=user_id, full_name=user_full_name)
+    return models.User.insert(id=user_id, full_name=user_full_name).on_conflict_replace().execute()
 
 
-def create_supply(supply: api.Supply):
+def insert_supply(supply: api.Supply):
     """Добавляет поставку в базу"""
     models.Supply.insert(
         id=supply.sup_id,
@@ -42,26 +40,25 @@ def create_supply(supply: api.Supply):
     ).on_conflict_replace().execute()
 
 
-def create_order(order: api.Order, supply_id: str):
-    """Загружает в базу все заказы по данной поставке"""
-    product = api.get_product(
-        os.environ['WB_API_KEY'],
-        article=order.article)
-    models.Product.insert(
-        article=order.article,
-        name=product.name
-    ).on_conflict_ignore().execute()
-
+def bulk_insert_orders(orders: list[api.Order], supply_id: str):
+    """Загружает в базу все заказы и продукты по данной поставке"""
     models.Order.delete().where(models.Order.supply == supply_id)
-    models.Order.insert(
-        id=order.order_id,
-        supply=supply_id,
-        article=order.article,
-        created_at=order.created_at
-    ).on_conflict_replace().execute()
 
-    for sku in order.skus:
-        models.SKU.insert(
-            text=sku,
-            order=order.order_id
-        ).on_conflict_ignore().execute()
+    # products = (
+    #     api.get_product(
+    #         os.environ['WB_API_KEY'],
+    #         article=order.article
+    #     )
+    #     for order in orders
+    # )
+    # product_fields = [models.Product.name, models.Product.article]
+    # with models.db.atomic():
+    #     models.Product.insert_many(rows=products, fields=product_fields).on_conflict_replace().execute()
+
+    orders = [
+        (order.order_id, supply_id, order.article, order.created_at)
+        for order in orders
+    ]
+    order_fields = [models.Order.id, models.Order.supply, models.Order.article, models.Order.created_at]
+    with models.db.atomic():
+        models.Order.insert_many(rows=orders, fields=order_fields).on_conflict_replace().execute()

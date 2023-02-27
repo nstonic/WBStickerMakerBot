@@ -226,7 +226,7 @@ def register_user(call: CallbackQuery):
     Регистрирует пользователя
     """
     user_id = int(call.data.lstrip('register_'))
-    db_client.create_user(
+    db_client.insert_user(
         user_id=user_id,
         user_full_name=call.from_user.full_name
     )
