@@ -21,9 +21,6 @@ class Order(BaseModel):
     article: str
     created_at: datetime.datetime = Field(alias='createdAt')
 
-    def to_tuple(self) -> tuple:
-        return self.order_id, self.article, self.created_at
-
 
 class Sticker(BaseModel):
     file: str
@@ -93,6 +90,7 @@ def get_product_response(api_key: str, article: str) -> Response | None:
     response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
                              json=request_json,
                              headers=headers)
+
     try:
         check_response(response)
     except (HTTPError, JSONDecodeError, WBAPIError) as ex:

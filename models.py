@@ -40,8 +40,7 @@ class ProductDbModel(BaseDbModel):
 class OrderDbModel(BaseDbModel):
     id = IntegerField(primary_key=True)
     supply = ForeignKeyField(SupplyDbModel, backref='orders', on_delete='CASCADE')
-    article = CharField(max_length=128)
-    product_name = CharField(max_length=200, null=True)
+    product = ForeignKeyField(ProductDbModel, backref='orders', on_delete='CASCADE')
     sticker = TextField(null=True)
     created_at = DateTimeField()
 

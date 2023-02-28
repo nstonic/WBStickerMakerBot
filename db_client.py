@@ -1,8 +1,8 @@
 from pprint import pprint
 
-from barcode import Code128
-from barcode.writer import ImageWriter
-from fpdf import FPDF
+# from barcode import Code128
+# from barcode.writer import ImageWriter
+# from fpdf import FPDF
 from peewee import ModelSelect
 
 from api import Supply, Order, get_supplies_response, get_product, get_sticker_response, Sticker
@@ -50,9 +50,18 @@ def insert_supply(supply: Supply):
 def bulk_insert_orders(orders: list[Order], supply_id: str):
     """Загружает в базу все заказы и продукты по данной поставке"""
     OrderDbModel.delete().where(OrderDbModel.supply == supply_id)
+    articles = [[order.article] for order in orders]
+    with db.atomic():
+        ProductDbModel.insert_many(
+            rows=articles,
+            fields=[ProductDbModel.article]
+        ).on_conflict_ignore().execute()
 
-    orders_data = [(*order.to_tuple(), supply_id) for order in orders]
-    order_fields = [OrderDbModel.id, OrderDbModel.article, OrderDbModel.created_at, OrderDbModel.supply]
+    orders_data = []
+    for order in orders:
+        product = ProductDbModel.get(ProductDbModel.article == order.article)
+        orders_data.append([order.order_id, product, order.created_at, supply_id])
+    order_fields = [OrderDbModel.id, OrderDbModel.product, OrderDbModel.created_at, OrderDbModel.supply]
     with db.atomic():
         OrderDbModel.insert_many(rows=orders_data, fields=order_fields).on_conflict_replace().execute()
 
@@ -80,22 +89,19 @@ def get_orders(supply_id: str) -> ModelSelect:
 
 def fetch_products(api_key: str, orders: ModelSelect):
     """Собирает данные по продуктам из поставки"""
-    articles = set([order.article for order in orders])
+    articles = set([order.product.article for order in orders])
     products = {article: get_product(api_key, article) for article in articles}
     for article, product_name in products.items():
-        for order in orders.where(OrderDbModel.article == article):
-            order.product_name = product_name
-            order.save()
+        ProductDbModel.update({ProductDbModel.name: product_name}). \
+            where(ProductDbModel.article == article).execute()
 
 
 def fetch_stickers(api_key: str, orders: ModelSelect):
     stickers_response = get_sticker_response(api_key, list(orders))
     stickers = [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]
     for sticker in stickers:
-        for order in orders.where(OrderDbModel.id == sticker.order_id):
-            order.sticker = sticker.file
-            order.save()
-
+        OrderDbModel.update({OrderDbModel.sticker: sticker.file}). \
+            where(OrderDbModel.id == sticker.order_id).execute()
 
 # def build_barcode_pdf(product: ProductDbModel):
 #     with open("barcode.png", "wb") as file:
