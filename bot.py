@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 from telebot.types import Message, CallbackQuery
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-import api
-import db_client
-from helpers import join_orders, fetch_supplies
+from api import get_supplies_response, get_orders_response, Order
+from helpers import join_orders
+from db_client import fetch_supplies, check_user_registration, bulk_insert_orders, insert_user, prepare_db, \
+    fetch_products, fetch_stickers, get_orders
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -25,7 +26,7 @@ def check_registration(func):
         else:
             return
 
-        if not db_client.check_user_registration(message.chat.id):
+        if not check_user_registration(message.chat.id):
             ask_for_registration(message)
         else:
             return func(*args, **kwargs)
@@ -41,22 +42,17 @@ def ask_for_registration(message):
     register_markup.add(
         InlineKeyboardButton(
             text='Одобрить',
-            callback_data=f'register_{user_id}'
-        ),
+            callback_data=f'register_{user_id}'),
         InlineKeyboardButton(
             text='Отказать',
-            callback_data=f'deny_{user_id}'
-        )
-    )
+            callback_data=f'deny_{user_id}'))
     bot.send_message(
         chat_id=os.environ['OWNER_ID'],
         text=f'Запрос на регистрацию пользователя\n{message.from_user.full_name}',
-        reply_markup=register_markup
-    )
+        reply_markup=register_markup)
     bot.send_message(
         chat_id=user_id,
-        text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.'
-    )
+        text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
 @bot.message_handler(commands=['start'])
@@ -67,14 +63,11 @@ def start(message: Message):
     supplies_markup.add(
         InlineKeyboardButton(
             text='Показать поставки',
-            callback_data='show_supplies'
-        )
-    )
+            callback_data='show_supplies'))
     bot.send_message(
         message.chat.id,
         text='Привет',
-        reply_markup=supplies_markup
-    )
+        reply_markup=supplies_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'show_supplies')
@@ -83,11 +76,10 @@ def show_active_supplies(call: CallbackQuery):
     """
     Отображает текущие незакрытые поставки
     """
-    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
-        active_supplies = fetch_supplies(response)
+    if active_supplies := fetch_supplies(os.environ['WB_API_KEY']):
         bot.answer_callback_query(call.id, 'Поставки загружены')
     else:
-        bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
+        bot.answer_callback_query(call.id, 'Нет активных поставок')
         return
 
     supplies_markup = InlineKeyboardMarkup()
@@ -96,21 +88,16 @@ def show_active_supplies(call: CallbackQuery):
             supplies_markup.add(
                 InlineKeyboardButton(
                     text=f'{supply.name} | {supply.sup_id})',
-                    callback_data=f'supply_{supply.sup_id}'
-                )
-            )
+                    callback_data=f'supply_{supply.sup_id}'))
     supplies_markup.add(
         InlineKeyboardButton(
             text='Показать больше поставок',
-            callback_data=f'more_supplies'
-        )
-    )
+            callback_data=f'more_supplies'))
 
     bot.send_message(
         chat_id=call.message.chat.id,
         text='Текущие незакрытые поставки',
-        reply_markup=supplies_markup
-    )
+        reply_markup=supplies_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('supply_'))
@@ -121,11 +108,11 @@ def show_orders(call: CallbackQuery):
     """
 
     supply_id = call.data.lstrip('supply_')
-    response = api.get_orders_response(
+    response = get_orders_response(
         api_key=os.environ['WB_API_KEY'],
         supply_id=supply_id
     )
-    orders = [api.Order.parse_obj(order) for order in response.json()['orders']]
+    orders = [Order.parse_obj(order) for order in response.json()['orders']]
     order_markup = InlineKeyboardMarkup()
     order_markup.add(
         InlineKeyboardButton(
@@ -139,7 +126,7 @@ def show_orders(call: CallbackQuery):
         reply_markup=order_markup
     )
 
-    db_client.bulk_insert_orders(orders, supply_id)
+    bulk_insert_orders(orders, supply_id)
     bot.answer_callback_query(call.id, 'Заказы загружены')
 
 
@@ -182,19 +169,13 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
         )
         return
 
-    if response := api.get_supplies_response(os.environ['WB_API_KEY']):
-        bot.answer_callback_query(call.id, 'Идёт загрузка. Подождите')
-        supplies = sorted(
-            fetch_supplies(
-                response,
-                only_active=False,
-                number_of_supplies=number_of_supplies
-            ),
-            key=lambda supply: supply.create_at
-        )
-    else:
-        bot.answer_callback_query(call.id, 'Сервер недоступен. Попробуйте позже')
-        return
+    bot.answer_callback_query(call.id, 'Идёт загрузка. Подождите')
+    supplies = sorted(
+        fetch_supplies(
+            os.environ['WB_API_KEY'],
+            only_active=False,
+            number_of_supplies=number_of_supplies),
+        key=lambda supply: supply.create_at)
 
     is_active = {0: 'Открыта', 1: 'Закрыта'}
     supplies_markup = InlineKeyboardMarkup()
@@ -226,7 +207,7 @@ def register_user(call: CallbackQuery):
     Регистрирует пользователя
     """
     user_id = int(call.data.lstrip('register_'))
-    db_client.insert_user(
+    insert_user(
         user_id=user_id,
         user_full_name=call.from_user.full_name
     )
@@ -253,15 +234,19 @@ def deny_registration(call: CallbackQuery):
     )
     bot.send_message(
         int(user_id),
-        text='Ваша регистрация отклонена'
+        text='Ваш запрос на регистрацию отклонен'
     )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
 @check_registration
 def send_stickers(call: CallbackQuery):
+    bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
     supply_id = call.data.lstrip('stickers_for_supply_')
-    bot.answer_callback_query(call.id, 'Стикеры готовы')
+    orders = get_orders(supply_id)
+    fetch_products(os.environ['WB_API_KEY'], orders)
+    fetch_stickers(os.environ['WB_API_KEY'], orders)
+
     bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
 
 
@@ -272,7 +257,7 @@ def main():
     except ValueError:
         print('OWNER_ID должен быть целым числом')
         return
-    db_client.prepare_db(
+    prepare_db(
         owner_id=owner_id,
         owner_full_name=os.environ['OWNER_FULL_NAME']
     )

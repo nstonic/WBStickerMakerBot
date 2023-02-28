@@ -11,12 +11,12 @@ from peewee import ForeignKeyField
 db = SqliteDatabase('bot.db')
 
 
-class BaseSQLLiteModel(Model):
+class BaseDbModel(Model):
     class Meta:
         database = db
 
 
-class User(BaseSQLLiteModel):
+class UserDbModel(BaseDbModel):
     id = IntegerField(primary_key=True)
     full_name = CharField(max_length=50)
     register_at = DateTimeField(default=datetime.datetime.now)
@@ -24,7 +24,7 @@ class User(BaseSQLLiteModel):
     is_active = BooleanField(default=True)
 
 
-class Supply(BaseSQLLiteModel):
+class SupplyDbModel(BaseDbModel):
     id = CharField(primary_key=True, max_length=128)
     name = CharField(max_length=128)
     closed_at = DateTimeField(null=True)
@@ -32,18 +32,20 @@ class Supply(BaseSQLLiteModel):
     done = BooleanField()
 
 
-class Product(BaseSQLLiteModel):
+class ProductDbModel(BaseDbModel):
     article = CharField(max_length=128, primary_key=True)
-    name = TextField()
+    name = TextField(null=True)
 
 
-class Order(BaseSQLLiteModel):
+class OrderDbModel(BaseDbModel):
     id = IntegerField(primary_key=True)
-    supply = ForeignKeyField(Supply, backref='orders', on_delete='CASCADE')
-    article = ForeignKeyField(Product, backref='orders', on_delete='SET NULL', null=True)
+    supply = ForeignKeyField(SupplyDbModel, backref='orders', on_delete='CASCADE')
+    article = CharField(max_length=128)
+    product_name = CharField(max_length=200, null=True)
+    sticker = TextField(null=True)
     created_at = DateTimeField()
 
 
-class SKU(BaseSQLLiteModel):
+class SKUDbModel(BaseDbModel):
     text = CharField(primary_key=True, max_length=128)
-    order = ForeignKeyField(Order, backref='skus', on_delete='CASCADE')
+    order = ForeignKeyField(OrderDbModel, backref='skus', on_delete='CASCADE')
