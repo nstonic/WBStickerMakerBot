@@ -43,8 +43,3 @@ class OrderDbModel(BaseDbModel):
     product = ForeignKeyField(ProductDbModel, backref='orders', on_delete='CASCADE')
     sticker = TextField(null=True)
     created_at = DateTimeField()
-
-
-class SKUDbModel(BaseDbModel):
-    text = CharField(primary_key=True, max_length=128)
-    order = ForeignKeyField(OrderDbModel, backref='skus', on_delete='CASCADE')

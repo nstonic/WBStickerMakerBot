@@ -6,13 +6,13 @@ from pprint import pprint
 from peewee import ModelSelect
 
 from api import Supply, Order, get_supplies_response, get_product, get_sticker_response, Sticker
-from models import db, UserDbModel, SupplyDbModel, OrderDbModel, SKUDbModel, ProductDbModel
+from models import db, UserDbModel, SupplyDbModel, OrderDbModel, ProductDbModel
 
 
 def prepare_db(owner_id: int, owner_full_name: str):
     """Создает базу данных. Регистрирует владельца как единственного администратора"""
     db.create_tables(
-        [UserDbModel, SupplyDbModel, OrderDbModel, SKUDbModel, ProductDbModel]
+        [UserDbModel, SupplyDbModel, OrderDbModel, ProductDbModel]
     )
 
     UserDbModel.update({'is_admin': False}). \
