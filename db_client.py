@@ -1,7 +1,7 @@
 from peewee import ModelSelect
 
-from api.classes import Supply, Order, Sticker, Product
-from api.methods import get_supplies_response, get_product, get_sticker_response
+from api.classes import Supply, Order, Product, Sticker
+from api.methods import get_product, get_stickers
 from models import db, UserModel, SupplyModel, OrderModel, ProductModel
 
 
@@ -32,15 +32,15 @@ def insert_user(user_id: int, user_full_name: str) -> UserModel:
     return UserModel.insert(id=user_id, full_name=user_full_name).on_conflict_replace().execute()
 
 
-def insert_supply(supply: Supply):
-    """Добавляет поставку в базу"""
-    SupplyModel.insert(
-        id=supply.sup_id,
-        name=supply.name,
-        closed_at=supply.closed_at,
-        create_at=supply.create_at,
-        done=supply.done
-    ).on_conflict_replace().execute()
+def bulk_insert_supplies(supplies: list[Supply]):
+    """Добавляет поставки в базу"""
+    supplies_rows = [supply.to_tuple() for supply in supplies]
+    supplies_fields = [SupplyModel.id, SupplyModel.name, SupplyModel.closed_at, SupplyModel.create_at, SupplyModel.done]
+    with db.atomic():
+        SupplyModel.insert_many(
+            rows=supplies_rows,
+            fields=supplies_fields
+        ).on_conflict_ignore().execute()
 
 
 def bulk_insert_orders(orders: list[Order], supply_id: str):
@@ -62,24 +62,7 @@ def bulk_insert_orders(orders: list[Order], supply_id: str):
         OrderModel.insert_many(rows=orders_data, fields=order_fields).on_conflict_replace().execute()
 
 
-def fetch_supplies(
-        api_key: str,
-        only_active: bool = True,
-        number_of_supplies: int = 50) -> list[Supply]:
-    """Собирает поставки в список и записывает их в БД"""
-    response = get_supplies_response(api_key)
-    supplies = []
-    for supply in response.json()["supplies"][::-1]:
-        if not supply['done'] or only_active is False:
-            supply = Supply.parse_obj(supply)
-            supplies.append(supply)
-            insert_supply(supply)
-        if len(supplies) == number_of_supplies:
-            break
-    return supplies
-
-
-def get_orders(supply_id: str) -> ModelSelect:
+def select_orders_by_supply(supply_id: str) -> ModelSelect:
     return OrderModel.select().where(OrderModel.supply_id == supply_id)
 
 
@@ -95,10 +78,8 @@ def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
     return products
 
 
-def fetch_stickers(api_key: str, orders: ModelSelect):
+def add_stickers_to_db(stickers: list[Sticker]):
     """Собирает стикеры заказов"""
-    stickers_response = get_sticker_response(api_key, list(orders))
-    stickers = [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]
     for sticker in stickers:
         OrderModel.update({OrderModel.sticker: sticker.file}). \
             where(OrderModel.id == sticker.order_id).execute()

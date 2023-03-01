@@ -1,67 +1,15 @@
-import requests
-from requests import Response
+from peewee import ModelSelect
 
-from .classes import Product
-from errors import check_response, retry_on_network_error
-from models import OrderModel
+from .classes import Product, Order, Supply, Sticker
+from .requests import get_supplies_response, get_orders_response, get_product_response, get_sticker_response
 
 
-@retry_on_network_error
-def get_supplies_response(api_key: str) -> Response | None:
-    """
-    Получает список поставок
-    """
-    headers = {"Authorization": api_key}
-    params = {
-        "limit": 1000,
-        "next": 0
-    }
-    # Находим последнюю страницу с поставками
-    while True:
-        response = requests.get(
-            "https://suppliers-api.wildberries.ru/api/v3/supplies",
-            headers=headers,
-            params=params
-        )
-        check_response(response)
-        if response.json()["supplies"] == params["limit"]:
-            params["next"] = response.json()["next"]
-            continue
-        else:
-            return response
-
-
-@retry_on_network_error
-def get_orders_response(api_key: str, supply_id: str) -> Response | None:
-    """
-    Получает список заказов по данной поставке
-    :param api_key:
-    :param supply_id:
-    :return:
-    """
-    headers = {"Authorization": api_key}
-    response = requests.get(
-        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders",
-        headers=headers
+def get_orders(supply_id: str, api_key: str) -> list[Order]:
+    response = get_orders_response(
+        api_key=api_key,
+        supply_id=supply_id
     )
-
-    check_response(response)
-    return response
-
-
-@retry_on_network_error
-def get_product_response(api_key: str, article: str) -> Response | None:
-    """
-    Получает описание товара по артикулу
-    """
-    headers = {"Authorization": api_key}
-    request_json = {"vendorCodes": [article]}
-    response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
-                             json=request_json,
-                             headers=headers)
-
-    check_response(response)
-    return response
+    return [Order.parse_obj(order) for order in response.json()['orders']]
 
 
 def get_product(api_key: str, article: str) -> Product:
@@ -74,21 +22,20 @@ def get_product(api_key: str, article: str) -> Product:
     return Product(wanted_product_card)
 
 
-@retry_on_network_error
-def get_sticker_response(api_key: str, orders: list[OrderModel]) -> Response | None:
-    headers = {"Authorization": api_key}
-    json_ = {"orders": [order.id for order in orders]}
-    params = {
-        "type": "png",
-        "width": 58,
-        "height": 40
-    }
+def get_supplies(api_key: str,
+                 only_active: bool = True,
+                 number_of_supplies: int = 50) -> list[Supply]:
+    response = get_supplies_response(api_key)
+    supplies = []
+    for supply in response.json()["supplies"][::-1]:
+        if not supply['done'] or only_active is False:
+            supply = Supply.parse_obj(supply)
+            supplies.append(supply)
+        if len(supplies) == number_of_supplies:
+            break
+    return supplies
 
-    response = requests.post(
-        "https://suppliers-api.wildberries.ru/api/v3/orders/stickers",
-        headers=headers,
-        json=json_,
-        params=params
-    )
-    check_response(response)
-    return response
+
+def get_stickers(api_key: str, orders: ModelSelect):
+    stickers_response = get_sticker_response(api_key, list(orders))
+    return [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]

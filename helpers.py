@@ -7,6 +7,7 @@ from api.classes import Order
 from db_client import check_user_registration
 
 
+
 def join_orders(orders: list[Order]) -> str:
     """Собирает все артикулы из заказов и объединяет их в одно сообщение
     @type orders: список заказов, представленных как результаты парсинга

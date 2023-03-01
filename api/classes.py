@@ -1,5 +1,4 @@
 import datetime
-from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +9,9 @@ class Supply(BaseModel):
     create_at: datetime.datetime = Field(alias='createdAt')
     done: bool
     sup_id: str = Field(alias='id')
+
+    def to_tuple(self):
+        return self.sup_id, self.name, self.closed_at, self.create_at, self.done
 
 
 class Order(BaseModel):
@@ -34,3 +36,9 @@ class Product:
         )['Наименование']
         self.barcode = product_card["sizes"][0]["skus"][0]
         self.article = product_card["vendorCode"]
+
+    def __str__(self):
+        return f'article: {self.article}, name: {self.name}, barcode: {self.barcode}'
+
+    def __repr__(self):
+        return f'article: {self.article}, name: {self.name}, barcode: {self.barcode}'
