@@ -1,11 +1,7 @@
-from pprint import pprint
-
-# from barcode import Code128
-# from barcode.writer import ImageWriter
-# from fpdf import FPDF
 from peewee import ModelSelect
 
-from api import Supply, Order, get_supplies_response, get_product, get_sticker_response, Sticker
+from api import Supply, Order, Sticker, Product
+from api import get_supplies_response, get_product, get_sticker_response
 from models import db, UserDbModel, SupplyDbModel, OrderDbModel, ProductDbModel
 
 
@@ -87,37 +83,22 @@ def get_orders(supply_id: str) -> ModelSelect:
     return OrderDbModel.select().where(OrderDbModel.supply_id == supply_id)
 
 
-def fetch_products(api_key: str, orders: ModelSelect):
+def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
     """Собирает данные по продуктам из поставки"""
     articles = set([order.product.article for order in orders])
-    products = {article: get_product(api_key, article) for article in articles}
-    for article, product_name in products.items():
-        ProductDbModel.update({ProductDbModel.name: product_name}). \
-            where(ProductDbModel.article == article).execute()
+    products = [get_product(api_key, article) for article in articles]
+    for product in products:
+        ProductDbModel.update(
+            {ProductDbModel.name: product.name,
+             ProductDbModel.barcode: product.barcode}
+        ).where(ProductDbModel.article == product.article).execute()
+    return products
 
 
 def fetch_stickers(api_key: str, orders: ModelSelect):
+    """Собирает стикеры заказов"""
     stickers_response = get_sticker_response(api_key, list(orders))
     stickers = [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]
     for sticker in stickers:
         OrderDbModel.update({OrderDbModel.sticker: sticker.file}). \
             where(OrderDbModel.id == sticker.order_id).execute()
-
-# def build_barcode_pdf(product: ProductDbModel):
-#     with open("barcode.png", "wb") as file:
-#         Code128(product.barcode, writer=ImageWriter()).write(file)
-#     pdf = FPDF(format=(120, 75))
-#     pdf.set_auto_page_break(auto=False, margin=0)
-#     pdf.add_page()
-#     pdf.image("barcode.png", y=3, x=33, w=55, h=33, type="png")
-#     try:
-#         pdf.add_font("Arial", fname='arial.ttf', uni=True)
-#         pdf.set_font("Arial", size=10)
-#     except:
-#         input("Скопируйте arial.ttf в папку с программой.\nДля закрытия нажмите Enter")
-#     pdf.ln(30)
-#     pdf.multi_cell(w=0, h=5,
-#                    txt=f"{product.name}\nАртикул: {product.article}\nСтрана: Россия\nБренд: CVT",
-#                    align="L")
-#
-#     pdf.output(rf"barcodes\{product.article}.pdf")

@@ -34,6 +34,7 @@ class SupplyDbModel(BaseDbModel):
 
 class ProductDbModel(BaseDbModel):
     article = CharField(max_length=128, primary_key=True)
+    barcode = CharField(max_length=32, null=True)
     name = TextField(null=True)
 
 

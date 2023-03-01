@@ -1,7 +1,6 @@
 from collections import Counter
 
 from api import Order
-from db_client import get_orders, fetch_products, fetch_stickers
 
 
 def join_orders(orders: list[Order]) -> str:
@@ -14,9 +13,3 @@ def join_orders(orders: list[Order]) -> str:
     else:
         joined_orders = 'В данной поставе нет заказов'
     return joined_orders
-
-
-def fetch_data_for_stickers(supply_id: str, wb_api_key: str):
-    orders = get_orders(supply_id)
-    fetch_products(wb_api_key, orders)
-    fetch_stickers(wb_api_key, orders)

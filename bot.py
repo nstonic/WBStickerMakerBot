@@ -6,8 +6,10 @@ from telebot.types import Message, CallbackQuery
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from api import get_orders_response, Order
-from helpers import join_orders, fetch_data_for_stickers
-from db_client import fetch_supplies, check_user_registration, bulk_insert_orders, insert_user, prepare_db
+from helpers import join_orders
+from db_client import fetch_supplies, check_user_registration, bulk_insert_orders, insert_user, prepare_db, get_orders, \
+    fetch_products, fetch_stickers
+from stickers import create_barcode_pdf, create_stickers
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -242,9 +244,15 @@ def deny_registration(call: CallbackQuery):
 def send_stickers(call: CallbackQuery):
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
     supply_id = call.data.lstrip('stickers_for_supply_')
-    fetch_data_for_stickers(supply_id, os.environ['WB_API_KEY'])
-
-    bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+    orders = get_orders(supply_id)
+    products = fetch_products(os.environ['WB_API_KEY'], orders)
+    fetch_stickers(os.environ['WB_API_KEY'], orders)
+    bot.send_message(call.message.chat.id, f'Данные успешно загружены. Ваши стикеры скоро будут готовы. Ожидайте')
+    create_barcode_pdf(products)
+    sticker_file_name = create_stickers(orders, supply_id)
+    with open(sticker_file_name, 'rb') as file:
+        bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+        bot.send_document(call.message.chat.id, file)
 
 
 def main():

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import datetime
 
 import requests
@@ -29,6 +30,13 @@ class Sticker(BaseModel):
     partB: str
 
 
+@dataclass
+class Product:
+    name: str
+    article: str
+    barcode: str
+
+
 @retry_on_network_error
 def get_supplies_response(api_key: str) -> Response | None:
     """
@@ -46,11 +54,7 @@ def get_supplies_response(api_key: str) -> Response | None:
             headers=headers,
             params=params
         )
-        try:
-            check_response(response)
-        except (HTTPError, WBAPIError) as ex:
-            print(ex)
-            return
+        check_response(response)
         if response.json()["supplies"] == params["limit"]:
             params["next"] = response.json()["next"]
             continue
@@ -71,13 +75,9 @@ def get_orders_response(api_key: str, supply_id: str) -> Response | None:
         f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders",
         headers=headers
     )
-    try:
-        check_response(response)
-    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
-        print(ex)
-        return
-    else:
-        return response
+
+    check_response(response)
+    return response
 
 
 @retry_on_network_error
@@ -91,24 +91,22 @@ def get_product_response(api_key: str, article: str) -> Response | None:
                              json=request_json,
                              headers=headers)
 
-    try:
-        check_response(response)
-    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
-        print(ex)
-        return
+    check_response(response)
     return response
 
 
-def get_product(api_key: str, article: str) -> tuple | None:
+def get_product(api_key: str, article: str) -> Product:
     response = get_product_response(api_key, article)
+
     wanted_product_card = next(filter(
         lambda product: product["vendorCode"] == article,
         response.json()["data"]))
-
-    return next(filter(
+    name = next(filter(
         lambda characteristic: characteristic.get('Наименование'),
         wanted_product_card["characteristics"])
     )['Наименование']
+    barcode = wanted_product_card["sizes"][0]["skus"][0]
+    return Product(name=name, article=article, barcode=barcode)
 
 
 @retry_on_network_error
@@ -127,9 +125,5 @@ def get_sticker_response(api_key: str, orders: list[OrderDbModel]) -> Response |
         json=json_,
         params=params
     )
-    try:
-        check_response(response)
-    except (HTTPError, JSONDecodeError, WBAPIError) as ex:
-        print(ex)
-        return
+    check_response(response)
     return response
