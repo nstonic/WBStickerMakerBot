@@ -1,7 +1,7 @@
 import requests
 from requests import Response
 
-from errors import retry_on_network_error, check_response
+from .errors import retry_on_network_error, check_response
 from models import OrderModel
 
 

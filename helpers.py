@@ -1,11 +1,25 @@
 from collections import Counter
 from typing import Callable
 
-from telebot.types import Message, CallbackQuery
+from telebot.types import Message, CallbackQuery, InlineKeyboardButton
+from telebot.util import quick_markup
 
-from api.classes import Order
+from api.classes import Order, Supply
 from db_client import check_user_registration
 
+
+def get_supplies_markup(supplies: list[Supply]):
+    """Подготавливает кнопки поставок"""
+    is_active = {0: 'Открыта', 1: 'Закрыта'}
+    supplies_markup = quick_markup({
+        f'{supply.name} | {supply.sup_id} | {is_active[supply.done]}': {'callback_data': f'supply_{supply.sup_id}'}
+        for supply in supplies
+    }, row_width=1)
+    supplies_markup.add(
+        InlineKeyboardButton(
+            text='Показать больше поставок',
+            callback_data=f'more_supplies'))
+    return supplies_markup
 
 
 def join_orders(orders: list[Order]) -> str:
@@ -29,6 +43,10 @@ def check_registration(registration_func: Callable):
      не зарегистрирован. Она должна принимать в качестве аргумента Message"""
 
     def check_registration_decorator(func):
+        """
+        @type func: Проверяемая функция должна первым аргументом принимать
+        либо CallbackQuery, либо Message
+        """
         def wrapper(*args, **kwargs):
             first_arg, *_ = args
             if isinstance(first_arg, Message):
@@ -38,10 +56,10 @@ def check_registration(registration_func: Callable):
             else:
                 return
 
-            if not check_user_registration(message.chat.id):
-                registration_func(message)
-            else:
+            if check_user_registration(message.chat.id):
                 return func(*args, **kwargs)
+            else:
+                registration_func(message)
 
         return wrapper
 
