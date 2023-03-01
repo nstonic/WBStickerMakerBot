@@ -8,8 +8,8 @@ from fpdf import FPDF
 from peewee import ModelSelect
 from pypdf import PdfWriter, PdfReader
 
-from api import Product
-from models import OrderDbModel
+from api.classes import Product
+from models import OrderModel
 
 
 def create_barcode_pdf(products: list[Product]):
@@ -59,7 +59,7 @@ def group_orders_by_article(orders: ModelSelect):
     return grouped_orders
 
 
-def save_stickers_to_png(orders: list[OrderDbModel]):
+def save_stickers_to_png(orders: list[OrderModel]):
     os.makedirs('stickers', exist_ok=True)
     for order in orders:
         sticker_in_byte_format = b64decode(order.sticker, validate=True)
@@ -67,7 +67,7 @@ def save_stickers_to_png(orders: list[OrderDbModel]):
             file.write(sticker_in_byte_format)
 
 
-def create_pdf_from_png(orders: list[OrderDbModel], article: str):
+def create_pdf_from_png(orders: list[OrderModel], article: str):
     pdf = FPDF(format=(120, 75))
     pdf.set_auto_page_break(auto=False, margin=0)
     for order in orders:

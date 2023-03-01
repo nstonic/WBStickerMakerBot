@@ -1,40 +1,9 @@
-from dataclasses import dataclass
-import datetime
-
 import requests
-from pydantic import BaseModel, Field
-from requests.exceptions import HTTPError, JSONDecodeError
 from requests import Response
-from errors import check_response, retry_on_network_error, WBAPIError
-from models import OrderDbModel
 
-
-class Supply(BaseModel):
-    name: str
-    closed_at: datetime.datetime = Field(alias='closedAt', default=None)
-    create_at: datetime.datetime = Field(alias='createdAt')
-    done: bool
-    sup_id: str = Field(alias='id')
-
-
-class Order(BaseModel):
-    order_id: int = Field(alias='id')
-    article: str
-    created_at: datetime.datetime = Field(alias='createdAt')
-
-
-class Sticker(BaseModel):
-    file: str
-    order_id: int = Field(alias='orderId')
-    partA: str
-    partB: str
-
-
-@dataclass
-class Product:
-    name: str
-    article: str
-    barcode: str
+from .classes import Product
+from errors import check_response, retry_on_network_error
+from models import OrderModel
 
 
 @retry_on_network_error
@@ -97,20 +66,16 @@ def get_product_response(api_key: str, article: str) -> Response | None:
 
 def get_product(api_key: str, article: str) -> Product:
     response = get_product_response(api_key, article)
-
-    wanted_product_card = next(filter(
-        lambda product: product["vendorCode"] == article,
-        response.json()["data"]))
-    name = next(filter(
-        lambda characteristic: characteristic.get('Наименование'),
-        wanted_product_card["characteristics"])
-    )['Наименование']
-    barcode = wanted_product_card["sizes"][0]["skus"][0]
-    return Product(name=name, article=article, barcode=barcode)
+    wanted_product_card = {}
+    for product_card in response.json()["data"]:
+        if product_card["vendorCode"] == article:
+            wanted_product_card = product_card
+            break
+    return Product(wanted_product_card)
 
 
 @retry_on_network_error
-def get_sticker_response(api_key: str, orders: list[OrderDbModel]) -> Response | None:
+def get_sticker_response(api_key: str, orders: list[OrderModel]) -> Response | None:
     headers = {"Authorization": api_key}
     json_ = {"orders": [order.id for order in orders]}
     params = {

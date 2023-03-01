@@ -5,34 +5,15 @@ from dotenv import load_dotenv
 from telebot.types import Message, CallbackQuery
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from api import get_orders_response, Order
-from helpers import join_orders
-from db_client import fetch_supplies, check_user_registration, bulk_insert_orders, insert_user, prepare_db, get_orders, \
+from api.classes import Order
+from api.methods import get_orders_response
+from helpers import join_orders, check_registration
+from db_client import fetch_supplies, bulk_insert_orders, insert_user, prepare_db, get_orders, \
     fetch_products, fetch_stickers
 from stickers import create_barcode_pdf, create_stickers
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
-
-
-def check_registration(func):
-    """Декоратор проверяет регистрацию пользователя, отправившего сообщение.
-     Если пользователь не зарегистрирован, то запускает процесс регистрации"""
-
-    def wrapper(*args, **kwargs):
-        if isinstance(args[0], Message):
-            message = args[0]
-        elif isinstance(args[0], CallbackQuery):
-            message = args[0].message
-        else:
-            return
-
-        if not check_user_registration(message.chat.id):
-            ask_for_registration(message)
-        else:
-            return func(*args, **kwargs)
-
-    return wrapper
 
 
 def ask_for_registration(message):
@@ -57,7 +38,7 @@ def ask_for_registration(message):
 
 
 @bot.message_handler(commands=['start'])
-@check_registration
+@check_registration(ask_for_registration)
 def start(message: Message):
     bot.delete_message(message.chat.id, message.id)
     supplies_markup = InlineKeyboardMarkup()
@@ -72,7 +53,7 @@ def start(message: Message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'show_supplies')
-@check_registration
+@check_registration(ask_for_registration)
 def show_active_supplies(call: CallbackQuery):
     """
     Отображает текущие незакрытые поставки
@@ -102,7 +83,7 @@ def show_active_supplies(call: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('supply_'))
-@check_registration
+@check_registration(ask_for_registration)
 def show_orders(call: CallbackQuery):
     """
     Отображает заказы из текущей поставки
@@ -132,7 +113,7 @@ def show_orders(call: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('more_supplies'))
-@check_registration
+@check_registration(ask_for_registration)
 def get_supplies_number(call: CallbackQuery):
     """
     Запрашивает количество требуемых поставок
@@ -150,7 +131,7 @@ def get_supplies_number(call: CallbackQuery):
     )
 
 
-@check_registration
+@check_registration(ask_for_registration)
 def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
     Отображает требуемое число последних поставок
@@ -202,7 +183,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('register_'))
-@check_registration
+@check_registration(ask_for_registration)
 def register_user(call: CallbackQuery):
     """
     Регистрирует пользователя
@@ -223,7 +204,7 @@ def register_user(call: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('deny_'))
-@check_registration
+@check_registration(ask_for_registration)
 def deny_registration(call: CallbackQuery):
     """
     Отклоняет запрос регистрации
@@ -240,7 +221,7 @@ def deny_registration(call: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
-@check_registration
+@check_registration(ask_for_registration)
 def send_stickers(call: CallbackQuery):
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
     supply_id = call.data.lstrip('stickers_for_supply_')

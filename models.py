@@ -16,7 +16,7 @@ class BaseDbModel(Model):
         database = db
 
 
-class UserDbModel(BaseDbModel):
+class UserModel(BaseDbModel):
     id = IntegerField(primary_key=True)
     full_name = CharField(max_length=50)
     register_at = DateTimeField(default=datetime.datetime.now)
@@ -24,7 +24,7 @@ class UserDbModel(BaseDbModel):
     is_active = BooleanField(default=True)
 
 
-class SupplyDbModel(BaseDbModel):
+class SupplyModel(BaseDbModel):
     id = CharField(primary_key=True, max_length=128)
     name = CharField(max_length=128)
     closed_at = DateTimeField(null=True)
@@ -32,15 +32,15 @@ class SupplyDbModel(BaseDbModel):
     done = BooleanField()
 
 
-class ProductDbModel(BaseDbModel):
+class ProductModel(BaseDbModel):
     article = CharField(max_length=128, primary_key=True)
     barcode = CharField(max_length=32, null=True)
     name = TextField(null=True)
 
 
-class OrderDbModel(BaseDbModel):
+class OrderModel(BaseDbModel):
     id = IntegerField(primary_key=True)
-    supply = ForeignKeyField(SupplyDbModel, backref='orders', on_delete='CASCADE')
-    product = ForeignKeyField(ProductDbModel, backref='orders', on_delete='CASCADE')
+    supply = ForeignKeyField(SupplyModel, backref='orders', on_delete='CASCADE')
+    product = ForeignKeyField(ProductModel, backref='orders', on_delete='CASCADE')
     sticker = TextField(null=True)
     created_at = DateTimeField()
