@@ -5,6 +5,7 @@ from base64 import b64decode
 from barcode import Code128
 from barcode.writer import ImageWriter
 from fpdf import FPDF
+from pathvalidate import sanitize_filename
 from peewee import ModelSelect
 from pypdf import PdfWriter, PdfReader
 
@@ -36,7 +37,8 @@ def create_barcode_pdf(products: list[Product]) -> dict[str:list]:
             products_report['failed'].append(product.article)
 
         os.makedirs("barcodes", exist_ok=True)
-        pdf.output(rf'barcodes\{product.article}.pdf')
+        file_name = sanitize_filename(product.article.strip())
+        pdf.output(rf'barcodes\{file_name}.pdf')
     return products_report
 
 
@@ -45,15 +47,18 @@ def create_stickers(orders: ModelSelect, supply_id: str) -> str:
     grouped_orders = group_orders_by_article(orders)
     os.makedirs(path_name, exist_ok=True)
     for article, orders in grouped_orders.items():
-        barcode = PdfReader(rf'barcodes\{article}.pdf').getPage(0)
+        file_name = f'{sanitize_filename(article.strip())}.pdf'
+        barcode_path = os.path.join('barcodes', file_name)
+        barcode = PdfReader(barcode_path).pages[0]
         save_stickers_to_png(orders)
         create_pdf_from_png(orders, article)
-        stickers = PdfReader(f'stickers/{article}.pdf').pages
+        sticker_path = os.path.join('stickers', file_name)
+        stickers = PdfReader(sticker_path).pages
         writer = PdfWriter()
         for sticker in stickers:
             writer.add_page(sticker)
             writer.add_page(barcode)
-        writer.write(rf'{path_name}\{article}.pdf')
+        writer.write(rf'{path_name}/{file_name}.pdf')
     shutil.make_archive(path_name, 'zip', path_name)
     return f'{path_name}.zip'
 
@@ -71,7 +76,8 @@ def save_stickers_to_png(orders: list[OrderModel]):
     os.makedirs('stickers', exist_ok=True)
     for order in orders:
         sticker_in_byte_format = b64decode(order.sticker, validate=True)
-        with open(f'stickers/{order.id}.png', 'wb') as file:
+        sticker_path = os.path.join('stickers', f'{order.id}.png')
+        with open(sticker_path, 'wb') as file:
             file.write(sticker_in_byte_format)
 
 
@@ -80,5 +86,7 @@ def create_pdf_from_png(orders: list[OrderModel], article: str):
     pdf.set_auto_page_break(auto=False, margin=0)
     for order in orders:
         pdf.add_page()
-        pdf.image(f'stickers/{order.id}.png', y=5, x=10, h=65, type='png')
-    pdf.output(rf'stickers/{article}.pdf')
+        png_path = os.path.join('stickers', f'{order.id}.png')
+        pdf.image(png_path, y=5, x=10, h=65, type='png')
+    pdf_path = os.path.join('stickers', f'{article}.pdf')
+    pdf.output(pdf_path)
