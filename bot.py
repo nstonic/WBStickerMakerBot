@@ -191,8 +191,6 @@ def send_stickers(call: CallbackQuery):
     stickers = get_stickers(WB_API_KEY, orders)
     add_stickers_to_db(stickers)
 
-    bot.send_message(call.message.chat.id, f'Данные успешно загружены. Ваши стикеры скоро будут готовы. Ожидайте')
-
     orders = select_orders_by_supply(supply_id)
     product_report = create_barcode_pdf(products)
     sticker_file_name = create_stickers(orders, supply_id)
