@@ -7,8 +7,7 @@ from .requests import get_supplies_response, get_orders_response, get_product_re
 def get_orders(supply_id: str, api_key: str) -> list[Order]:
     response = get_orders_response(
         api_key=api_key,
-        supply_id=supply_id
-    )
+        supply_id=supply_id)
     return [Order.parse_obj(order) for order in response.json()['orders']]
 
 

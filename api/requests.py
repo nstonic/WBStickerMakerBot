@@ -13,15 +13,13 @@ def get_supplies_response(api_key: str) -> Response | None:
     headers = {"Authorization": api_key}
     params = {
         "limit": 1000,
-        "next": 0
-    }
+        "next": 0}
     # Находим последнюю страницу с поставками
     while True:
         response = requests.get(
             "https://suppliers-api.wildberries.ru/api/v3/supplies",
             headers=headers,
-            params=params
-        )
+            params=params)
         check_response(response)
         if response.json()["supplies"] == params["limit"]:
             params["next"] = response.json()["next"]
@@ -41,9 +39,7 @@ def get_orders_response(api_key: str, supply_id: str) -> Response | None:
     headers = {"Authorization": api_key}
     response = requests.get(
         f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders",
-        headers=headers
-    )
-
+        headers=headers)
     check_response(response)
     return response
 
@@ -55,10 +51,10 @@ def get_product_response(api_key: str, article: str) -> Response | None:
     """
     headers = {"Authorization": api_key}
     request_json = {"vendorCodes": [article]}
-    response = requests.post("https://suppliers-api.wildberries.ru/content/v1/cards/filter",
-                             json=request_json,
-                             headers=headers)
-
+    response = requests.post(
+        "https://suppliers-api.wildberries.ru/content/v1/cards/filter",
+        json=request_json,
+        headers=headers)
     check_response(response)
     return response
 
@@ -70,14 +66,12 @@ def get_sticker_response(api_key: str, orders: list[OrderModel]) -> Response | N
     params = {
         "type": "png",
         "width": 58,
-        "height": 40
-    }
+        "height": 40}
 
     response = requests.post(
         "https://suppliers-api.wildberries.ru/api/v3/orders/stickers",
         headers=headers,
         json=json_,
-        params=params
-    )
+        params=params)
     check_response(response)
     return response

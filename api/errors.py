@@ -22,12 +22,10 @@ def check_response(response: Response):
     if response_json.keys() == ('code', 'message'):
         raise WBAPIError(
             code=response_json['code'],
-            message=response_json['message']
-        )
+            message=response_json['message'])
     if response_json.get('error'):
         raise WBAPIError(
-            message=f'{response_json["errorText"]}: {response_json["additionalErrors"]}'
-        )
+            message=f'{response_json["errorText"]}: {response_json["additionalErrors"]}')
 
 
 def retry_on_network_error(func):
