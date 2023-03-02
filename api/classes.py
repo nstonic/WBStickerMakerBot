@@ -30,15 +30,10 @@ class Sticker(BaseModel):
 class Product:
 
     def __init__(self, product_card: dict):
-        self.name = next(filter(
-            lambda characteristic: characteristic.get('Наименование'),
-            product_card["characteristics"])
-        )['Наименование']
-        self.barcode = product_card["sizes"][0]["skus"][0]
-        self.article = product_card["vendorCode"]
-
-    def __str__(self):
-        return f'article: {self.article}, name: {self.name}, barcode: {self.barcode}'
-
-    def __repr__(self):
-        return f'article: {self.article}, name: {self.name}, barcode: {self.barcode}'
+        name = 'Наименование продукции'
+        for characteristic in product_card.get('characteristics'):
+            if name := characteristic.get('Наименование'):
+                break
+        self.name = name
+        self.barcode = product_card['sizes'][0]['skus'][0]
+        self.article = product_card.get('vendorCode', '0000000000')
