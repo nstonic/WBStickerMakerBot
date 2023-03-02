@@ -14,6 +14,15 @@ from models import OrderModel
 
 
 def create_barcode_pdf(products: list[Product]) -> dict[str:list]:
+    """Создает pdf со штрихкодом и описанием товара
+    @param products: список товаров, представленных как результаты парсинга
+    запросов к API
+    @return: Ответ по созданным штрихкодам в виде словаря:
+    {
+        'successfully': [],  - список артикулов, для которых штрихкод успешно создан
+        'failed': []         - список артикулов, для которых штрихкод создать не удалось
+    }
+    """
     products_report = {
         'successfully': [],
         'failed': []}
@@ -38,32 +47,46 @@ def create_barcode_pdf(products: list[Product]) -> dict[str:list]:
 
         os.makedirs("barcodes", exist_ok=True)
         file_name = sanitize_filename(product.article.strip())
-        pdf.output(rf'barcodes\{file_name}.pdf')
+        barcode_path = os.path.join('barcodes', f'{file_name}.pdf')
+        pdf.output(barcode_path)
     return products_report
 
 
 def create_stickers(orders: ModelSelect, supply_id: str) -> str:
-    path_name = f'Stickers for {supply_id}'
+    """
+    Создаёт результирующий файл с набором стикеров. По каждому артикулу отдельный файл
+    Затем архивирует их в zip
+    @param orders: Выборка заказов из БД
+    @param supply_id: ID поставки
+    @return: путь к zip-архиву
+    """
+    supply_path = f'Stickers for {supply_id}'
     grouped_orders = group_orders_by_article(orders)
-    os.makedirs(path_name, exist_ok=True)
+    os.makedirs(supply_path, exist_ok=True)
     for article, orders in grouped_orders.items():
         file_name = f'{sanitize_filename(article.strip())}.pdf'
         barcode_path = os.path.join('barcodes', file_name)
         barcode = PdfReader(barcode_path).pages[0]
         save_stickers_to_png(orders)
-        create_pdf_from_png(orders, article)
+        create_pdf_from_png(orders)
         sticker_path = os.path.join('stickers', file_name)
         stickers = PdfReader(sticker_path).pages
         writer = PdfWriter()
         for sticker in stickers:
             writer.add_page(sticker)
             writer.add_page(barcode)
-        writer.write(rf'{path_name}/{file_name}.pdf')
-    shutil.make_archive(path_name, 'zip', path_name)
-    return f'{path_name}.zip'
+        output_pdf_path = os.path.join(supply_path, f'{file_name}.pdf')
+        writer.write(output_pdf_path)
+    shutil.make_archive(supply_path, 'zip', supply_path)
+    return f'{supply_path}.zip'
 
 
-def group_orders_by_article(orders: ModelSelect):
+def group_orders_by_article(orders: ModelSelect) -> dict[str:OrderModel]:
+    """
+    Группирует заказы по артикулам
+    @param orders: Выборка заказов из БД
+    @return: словарь со сгруппированными заказами
+    """
     grouped_orders = {
         order.product.article: []
         for order in orders}
@@ -73,6 +96,10 @@ def group_orders_by_article(orders: ModelSelect):
 
 
 def save_stickers_to_png(orders: list[OrderModel]):
+    """
+    Сохраняет стикер заказа в png файл
+    @param orders: Список заказов, полученных из БД
+    """
     os.makedirs('stickers', exist_ok=True)
     for order in orders:
         sticker_in_byte_format = b64decode(order.sticker, validate=True)
@@ -81,7 +108,12 @@ def save_stickers_to_png(orders: list[OrderModel]):
             file.write(sticker_in_byte_format)
 
 
-def create_pdf_from_png(orders: list[OrderModel], article: str):
+def create_pdf_from_png(orders: list[OrderModel]):
+    """
+    Из png стикера сохраняет pdf
+    @param orders: Список заказов, полученных из БД
+    """
+    article = orders[0].product.article
     pdf = FPDF(format=(120, 75))
     pdf.set_auto_page_break(auto=False, margin=0)
     for order in orders:
