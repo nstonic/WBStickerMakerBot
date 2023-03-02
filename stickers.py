@@ -34,6 +34,8 @@ def create_barcode_pdf(products: list[Product]) -> dict[str:list]:
             products_report['successfully'].append(product.article)
         else:
             products_report['failed'].append(product.article)
+
+        os.makedirs("barcodes", exist_ok=True)
         pdf.output(rf'barcodes\{product.article}.pdf')
     return products_report
 

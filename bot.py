@@ -19,7 +19,7 @@ WB_API_KEY = os.environ['WB_API_KEY']
 
 
 def ask_for_registration(message: Message):
-    """Отправляет запрос на регистрацию пользователя администратору"""
+    """Отправляет администратору запрос на регистрацию пользователя"""
     user_id = message.chat.id
     register_markup = quick_markup(
         {'Одобрить': {'callback_data': f'register_{user_id}'},
@@ -100,6 +100,7 @@ def handle_orders(call: CallbackQuery):
 def get_supplies_number(call: CallbackQuery):
     """
     Запрашивает количество требуемых поставок
+    (если пользователю нужно посмотреть не только текущие открытые поставки, но и более ранние)
     """
     bot.clear_reply_handlers(call.message)
     bot.register_next_step_handler(
@@ -114,7 +115,7 @@ def get_supplies_number(call: CallbackQuery):
 @check_registration(ask_for_registration)
 def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
-    Отображает требуемое число последних поставок
+    Отображает требуемое число поставок, начиная с самых поздних
     """
     try:
         number_of_supplies = int(message.text)
@@ -178,6 +179,10 @@ def deny_registration(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
 @check_registration(ask_for_registration)
 def send_stickers(call: CallbackQuery):
+    """
+    Подготавливает и отправляет пользователю стикеры по данной поставке
+    """
+
     supply_id = call.data.lstrip('stickers_for_supply_')
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
 
@@ -203,7 +208,6 @@ def send_stickers(call: CallbackQuery):
 
 
 def main():
-    os.makedirs("barcodes", exist_ok=True)
     try:
         owner_id = int(os.environ['OWNER_ID'])
     except ValueError:

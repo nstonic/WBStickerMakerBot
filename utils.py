@@ -11,7 +11,10 @@ from db_client import check_user_registration, set_products_name_and_barcode
 
 
 def get_supplies_markup(supplies: list[Supply]):
-    """Подготавливает кнопки поставок"""
+    """Подготавливает кнопки поставок
+    @param supplies: список поставок, представленных как результаты парсинга
+    запросов к API
+    """
     is_active = {0: 'Открыта', 1: 'Закрыта'}
     supplies_markup = quick_markup({
         f'{supply.name} | {supply.sup_id} | {is_active[supply.done]}': {'callback_data': f'supply_{supply.sup_id}'}
@@ -26,8 +29,11 @@ def get_supplies_markup(supplies: list[Supply]):
 
 def join_orders(orders: list[Order]) -> str:
     """Собирает все артикулы из заказов и объединяет их в одно сообщение
-    @type orders: список заказов, представленных как результаты парсинга
-    запросов к API"""
+    @param orders: список заказов, представленных как результаты парсинга
+    запросов к API
+    @return: Строка из объединенных артикулов заказов
+    """
+
     if orders:
         articles = [order.article for order in orders]
         joined_orders = '\n'.join(
@@ -41,12 +47,12 @@ def join_orders(orders: list[Order]) -> str:
 def check_registration(registration_func: Callable):
     """Декоратор проверяет регистрацию пользователя, отправившего сообщение.
      Если пользователь не зарегистрирован, то запускает процесс регистрации.
-     @type registration_func: Функция, которую следует вызвать, если пользователь
+     @param registration_func: Функция, которую следует вызвать, если пользователь
      не зарегистрирован. Она должна принимать в качестве аргумента Message"""
 
-    def check_registration_decorator(func):
+    def check_registration_decorator(func: Callable):
         """
-        @type func: Проверяемая функция должна первым аргументом принимать
+        @param func: Проверяемая функция должна первым аргументом принимать
         либо CallbackQuery, либо Message
         """
 
@@ -70,7 +76,13 @@ def check_registration(registration_func: Callable):
 
 
 def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
-    """Собирает данные по продуктам из поставки"""
+    """Собирает данные по продуктам из поставки
+    @param orders: Заказы полученные из базы
+    @param api_key: api ключ wildberries
+    @return: список продуктов, представленных как результаты парсинга
+    запросов к API
+    @raise: HttpError, WBAPIError
+    """
     articles = set([order.product.article for order in orders])
     products = [get_product(api_key, article) for article in articles]
     set_products_name_and_barcode(products)

@@ -5,7 +5,7 @@ from requests.exceptions import ChunkedEncodingError
 
 
 class WBAPIError(HTTPError):
-    """Исключения для обработки ошибок запроса к API"""
+    """Исключение для обработки ошибок запроса к API"""
 
     def __init__(self, message: str, code: str = None):
         self.message = message
@@ -16,7 +16,10 @@ class WBAPIError(HTTPError):
 
 
 def check_response(response: Response):
-    """Функция для обработки ошибок запросов к API"""
+    """Функция для проверки запроса к API
+    @param response: Response от API
+    @raise: HttpError, WBAPIError
+    """
     response.raise_for_status()
     response_json = response.json()
     if response_json.keys() == ('code', 'message'):
@@ -29,7 +32,7 @@ def check_response(response: Response):
 
 
 def retry_on_network_error(func):
-    """Декоратор повторяет запрос, если произошел разрыв соединения"""
+    """Декоратор повторяет запрос к серверу, если произошла ошибка соединения."""
 
     def wrapper(*args, **kwargs):
         delay = 0

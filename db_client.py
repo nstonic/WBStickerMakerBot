@@ -5,15 +5,15 @@ from models import db, UserModel, SupplyModel, OrderModel, ProductModel
 
 
 def prepare_db(owner_id: int, owner_full_name: str):
-    """Создает базу данных. Регистрирует владельца как единственного администратора"""
+    """Создает БД. Регистрирует владельца как единственного администратора
+    @param owner_id: Telegram ID владельца бота
+    @param owner_full_name: Полное имя владельца бота
+    """
     db.create_tables(
-        [UserModel, SupplyModel, OrderModel, ProductModel]
-    )
-
+        [UserModel, SupplyModel, OrderModel, ProductModel])
     UserModel.update({'is_admin': False}). \
         where(UserModel.is_admin, UserModel.id != owner_id). \
         execute()
-
     UserModel.insert(
         id=owner_id,
         full_name=owner_full_name,
@@ -21,18 +21,28 @@ def prepare_db(owner_id: int, owner_full_name: str):
     ).on_conflict_ignore().execute()
 
 
-def check_user_registration(user_id: int) -> bool:
-    """Проверяет зарегистрирован ли пользователь"""
+def check_user_registration(user_id: int) -> UserModel | None:
+    """Проверяет зарегистрирован ли пользователь в БД
+    @param user_id: Telegram ID пользователя
+    @return: Объект пользователя из БД, если пользователь найден, в противном случае None
+    """
     return UserModel.get_or_none(UserModel.id == user_id)
 
 
 def insert_user(user_id: int, user_full_name: str) -> UserModel:
-    """Регистрирует пользователя в базе"""
+    """Регистрирует пользователя в базе
+    @param user_id: Telegram ID пользователя
+    @param user_full_name: Полное имя пользователя
+    @return: Объект пользователя из БД
+    """
     return UserModel.insert(id=user_id, full_name=user_full_name).on_conflict_replace().execute()
 
 
 def bulk_insert_supplies(supplies: list[Supply]):
-    """Добавляет поставки в базу"""
+    """Добавляет поставки в базу
+    @param supplies: список поставок, представленных как результаты парсинга
+    запросов к API
+    """
     supplies_rows = [supply.to_tuple() for supply in supplies]
     supplies_fields = [SupplyModel.id, SupplyModel.name, SupplyModel.closed_at, SupplyModel.create_at, SupplyModel.done]
     with db.atomic():
@@ -43,7 +53,11 @@ def bulk_insert_supplies(supplies: list[Supply]):
 
 
 def bulk_insert_orders(orders: list[Order], supply_id: str):
-    """Загружает в базу все заказы и продукты по данной поставке"""
+    """Загружает в базу все заказы и продукты по данной поставке
+    @param orders: список заказов, представленных как результаты парсинга
+    запросов к API
+    @param supply_id: ID поставки
+    """
     OrderModel.delete().where(OrderModel.supply == supply_id)
     articles = [[order.article] for order in orders]
     with db.atomic():
@@ -62,10 +76,21 @@ def bulk_insert_orders(orders: list[Order], supply_id: str):
 
 
 def select_orders_by_supply(supply_id: str) -> ModelSelect:
+    """
+    Выгружает из БД все заказы по данной поставке
+    @param supply_id: ID поставки
+    @return: Результат запроса к БД
+    """
     return OrderModel.select().where(OrderModel.supply_id == supply_id)
 
 
 def set_products_name_and_barcode(products: list[Product]):
+    """
+    Добавляет к товарам в БД данные: наименование и штрихкод.
+    Все товары должны быть уже созданы в БД
+    @param products: список товаров, представленных как результаты парсинга
+    запросов к API
+    """
     for product in products:
         ProductModel.update(
             {ProductModel.name: product.name,
@@ -74,7 +99,10 @@ def set_products_name_and_barcode(products: list[Product]):
 
 
 def add_stickers_to_db(stickers: list[Sticker]):
-    """Собирает стикеры заказов"""
+    """Заполняет у заказов в БД поле со стикером
+    @param stickers: список стикеров, представленных как результаты парсинга
+    запросов к API
+    """
     for sticker in stickers:
         OrderModel.update({OrderModel.sticker: sticker.file}). \
             where(OrderModel.id == sticker.order_id).execute()

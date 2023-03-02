@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class Supply(BaseModel):
+    """Класс для парсинга информации о поставке полученной от API"""
     name: str
     closed_at: datetime.datetime = Field(alias='closedAt', default=None)
     create_at: datetime.datetime = Field(alias='createdAt')
@@ -16,12 +17,14 @@ class Supply(BaseModel):
 
 
 class Order(BaseModel):
+    """Класс для парсинга информации о заказе полученной от API"""
     order_id: int = Field(alias='id')
     article: str
     created_at: datetime.datetime = Field(alias='createdAt')
 
 
 class Sticker(BaseModel):
+    """Класс для парсинга информации о стикере полученной от API"""
     file: str
     order_id: int = Field(alias='orderId')
     partA: str
@@ -30,12 +33,17 @@ class Sticker(BaseModel):
 
 @dataclass
 class Product:
+    """Класс для парсинга информации о товаре полученной от API"""
     article: str
     name: str = None
     barcode: str = None
 
     @staticmethod
     def parse_from_pc(product_card: dict):
+        """Парсит товар из карты товара, полученной из json
+        @param product_card: Карта товара в виде словаря из json
+        @return: Объект парсинга товара
+        """
         name = 'Наименование продукции'
         for characteristic in product_card.get('characteristics'):
             if name := characteristic.get('Наименование'):
