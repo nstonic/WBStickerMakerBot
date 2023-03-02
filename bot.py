@@ -7,10 +7,10 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from telebot.util import quick_markup
 
 from api.methods import get_orders, get_supplies, get_stickers
-from helpers import join_orders, check_registration, get_supplies_markup
+from utils import join_orders, check_registration, get_supplies_markup, fetch_products
 from db_client import prepare_db
 from db_client import add_stickers_to_db, insert_user, select_orders_by_supply
-from db_client import fetch_products, bulk_insert_orders, bulk_insert_supplies
+from db_client import bulk_insert_orders, bulk_insert_supplies
 from stickers import create_barcode_pdf, create_stickers
 
 load_dotenv()

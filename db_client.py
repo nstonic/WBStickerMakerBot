@@ -1,7 +1,6 @@
 from peewee import ModelSelect
 
 from api.classes import Supply, Order, Product, Sticker
-from api.methods import get_product, get_stickers
 from models import db, UserModel, SupplyModel, OrderModel, ProductModel
 
 
@@ -66,16 +65,12 @@ def select_orders_by_supply(supply_id: str) -> ModelSelect:
     return OrderModel.select().where(OrderModel.supply_id == supply_id)
 
 
-def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
-    """Собирает данные по продуктам из поставки"""
-    articles = set([order.product.article for order in orders])
-    products = [get_product(api_key, article) for article in articles]
+def set_products_name_and_barcode(products: list[Product]):
     for product in products:
         ProductModel.update(
             {ProductModel.name: product.name,
              ProductModel.barcode: product.barcode}
         ).where(ProductModel.article == product.article).execute()
-    return products
 
 
 def add_stickers_to_db(stickers: list[Sticker]):
