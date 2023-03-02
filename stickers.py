@@ -15,7 +15,7 @@ from models import OrderModel
 def create_barcode_pdf(products: list[Product]):
     for product in products:
         with open("barcode.png", "wb") as file:
-            Code128(product.barcode, writer=ImageWriter).write(file)
+            Code128(product.barcode, writer=ImageWriter()).write(file)
         pdf = FPDF(format=(120, 75))
         pdf.set_auto_page_break(auto=False, margin=0)
         pdf.add_page()
