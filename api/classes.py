@@ -1,4 +1,5 @@
 import datetime
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
@@ -27,13 +28,21 @@ class Sticker(BaseModel):
     partB: str
 
 
+@dataclass
 class Product:
+    article: str
+    name: str = None
+    barcode: str = None
 
-    def __init__(self, product_card: dict):
+    @staticmethod
+    def parse_from_pc(product_card: dict):
         name = 'Наименование продукции'
         for characteristic in product_card.get('characteristics'):
             if name := characteristic.get('Наименование'):
                 break
-        self.name = name
-        self.barcode = product_card['sizes'][0]['skus'][0]
-        self.article = product_card.get('vendorCode', '0000000000')
+        barcode = product_card['sizes'][0]['skus'][0]
+        article = product_card.get('vendorCode', '0000000000')
+        return Product(
+            name=name,
+            barcode=barcode,
+            article=article)

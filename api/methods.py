@@ -13,12 +13,10 @@ def get_orders(supply_id: str, api_key: str) -> list[Order]:
 
 def get_product(api_key: str, article: str) -> Product:
     response = get_product_response(api_key, article)
-    wanted_product_card = {}
     for product_card in response.json()["data"]:
         if product_card["vendorCode"] == article:
-            wanted_product_card = product_card
-            break
-    return Product(wanted_product_card)
+            return Product.parse_from_pc(product_card)
+    return Product(article=article)
 
 
 def get_supplies(api_key: str,

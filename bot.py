@@ -188,10 +188,17 @@ def send_stickers(call: CallbackQuery):
 
     bot.send_message(call.message.chat.id, f'Данные успешно загружены. Ваши стикеры скоро будут готовы. Ожидайте')
 
-    create_barcode_pdf(products)
+    orders = select_orders_by_supply(supply_id)
+    product_report = create_barcode_pdf(products)
     sticker_file_name = create_stickers(orders, supply_id)
+
+    if failed_articles := product_report['failed']:
+        missing_articles = "\n".join(failed_articles)
+        message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать штрихкод для товаров:\n{missing_articles}'
+    else:
+        message_text = f'Стикеры по поставке {supply_id}'
     with open(sticker_file_name, 'rb') as file:
-        bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+        bot.send_message(call.message.chat.id, message_text)
         bot.send_document(call.message.chat.id, file)
 
 
