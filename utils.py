@@ -1,11 +1,13 @@
 from collections import Counter
 from typing import Callable
 
+from peewee import ModelSelect
 from telebot.types import Message, CallbackQuery, InlineKeyboardButton
 from telebot.util import quick_markup
 
-from api.classes import Order, Supply
-from db_client import check_user_registration
+from api.classes import Order, Supply, Product
+from api.methods import get_product
+from db_client import check_user_registration, set_products_name_and_barcode
 
 
 def get_supplies_markup(supplies: list[Supply]):
@@ -47,6 +49,7 @@ def check_registration(registration_func: Callable):
         @type func: Проверяемая функция должна первым аргументом принимать
         либо CallbackQuery, либо Message
         """
+
         def wrapper(*args, **kwargs):
             first_arg, *_ = args
             if isinstance(first_arg, Message):
@@ -64,3 +67,11 @@ def check_registration(registration_func: Callable):
         return wrapper
 
     return check_registration_decorator
+
+
+def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
+    """Собирает данные по продуктам из поставки"""
+    articles = set([order.product.article for order in orders])
+    products = [get_product(api_key, article) for article in articles]
+    set_products_name_and_barcode(products)
+    return products
