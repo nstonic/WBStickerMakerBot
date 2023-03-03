@@ -9,8 +9,10 @@ from telebot.util import quick_markup
 
 from api.classes import Order, Supply, Product
 from api.methods import get_product, get_stickers
-from db_client import check_user_registration, set_products_name_and_barcode, select_orders_by_supply, \
-    add_stickers_to_db
+from db_client import check_user_registration
+from db_client import set_products_name_and_barcode
+from db_client import select_orders_by_supply
+from db_client import add_stickers_to_db
 from models import OrderModel
 from stickers import create_pdf
 

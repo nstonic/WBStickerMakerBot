@@ -9,10 +9,15 @@ from telebot.util import quick_markup
 
 from api.errors import WBAPIError
 from api.methods import get_orders, get_supplies
-from db_client import bulk_insert_orders, bulk_insert_supplies
+from db_client import bulk_insert_orders
+from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
-from utils import join_orders, check_registration, get_supplies_markup, prepare_stickers, delete_tempfiles
+from utils import join_orders
+from utils import check_registration
+from utils import get_supplies_markup
+from utils import prepare_stickers
+from utils import delete_tempfiles
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
