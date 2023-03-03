@@ -11,11 +11,10 @@ def prepare_db(owner_id: int, owner_full_name: str):
     @param owner_id: Telegram ID владельца бота
     @param owner_full_name: Полное имя владельца бота
     """
-    db.create_tables(
-        [UserModel, SupplyModel, OrderModel, ProductModel])
-    UserModel.update({'is_admin': False}). \
-        where(UserModel.is_admin, UserModel.id != owner_id). \
-        execute()
+    db.create_tables([UserModel, SupplyModel, OrderModel, ProductModel])
+    UserModel.update({'is_admin': False}) \
+        .where(UserModel.is_admin, UserModel.id != owner_id) \
+        .execute()
     UserModel.insert(
         id=owner_id,
         full_name=owner_full_name,
