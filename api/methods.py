@@ -10,7 +10,7 @@ def get_orders(supply_id: str) -> list[Order]:
     @param supply_id: id запрашиваемой поставки
     @return: список заказов, представленных как результаты парсинга
     запросов к API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     response = get_orders_response(
         supply_id=supply_id)
@@ -22,7 +22,7 @@ def get_product(article: str) -> Product:
     Получает и парсит информацию о товаре с Wildberries
     @param article: артикул товара
     @return: результат парсинга запроса к API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     response = get_product_response(article)
     for product_card in response.json()["data"]:
@@ -41,7 +41,7 @@ def get_supplies(
     @param number_of_supplies: Максимальное число возвращаемых поставок
     @return: список поставок, представленных как результаты парсинга
     запросов к API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     response = get_supplies_response()
     supplies = []
@@ -60,7 +60,7 @@ def get_stickers(orders: ModelSelect) -> list[Sticker]:
     @param orders: Заказы полученные из БД
     @return: список стикеров, представленных как результаты парсинга
     запросов к API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     stickers_response = get_sticker_response(list(orders))
     return [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]

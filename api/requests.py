@@ -1,19 +1,22 @@
 import os
 
 import requests
+from dotenv import load_dotenv
 from requests import Response
 
 from .errors import retry_on_network_error, check_response
 from models import OrderModel
 
+load_dotenv()
 _headers = {"Authorization": os.environ['WB_API_KEY']}
+
 
 @retry_on_network_error
 def get_supplies_response() -> Response:
     """
     Отправляет запрос к API. Получает список поставок.
     @return: Response от API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     params = {
         "limit": 1000,
@@ -38,7 +41,7 @@ def get_orders_response(supply_id: str) -> Response | None:
     Отправляет запрос к API. Получает список заказов по данной поставке.
     @param supply_id: id поставки, по которой требуется получить заказы
     @return: Response от API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     response = requests.get(
         f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders",
@@ -53,7 +56,7 @@ def get_product_response(article: str) -> Response | None:
     Отправляет запрос к API. Получает описание товара по артикулу.
     @param article: артикул товара
     @return: Response от API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     request_json = {"vendorCodes": [article]}
     response = requests.post(
@@ -70,7 +73,7 @@ def get_sticker_response(orders: list[OrderModel]) -> Response | None:
     Отправляет запрос к API. Получает стикеры по списку заказов
     @param orders: Список заказов полученных из БД
     @return: Response от API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     json_ = {"orders": [order.id for order in orders]}
     params = {

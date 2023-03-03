@@ -18,7 +18,7 @@ class WBAPIError(HTTPError):
 def check_response(response: Response):
     """Функция для проверки запроса к API
     @param response: Response от API
-    @raise: HttpError, WBAPIError
+    @raise: HTTPError, WBAPIError
     """
     response.raise_for_status()
     response_json = response.json()
