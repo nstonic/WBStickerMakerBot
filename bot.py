@@ -2,20 +2,20 @@ import os
 
 import telebot
 from dotenv import load_dotenv
-from telebot.types import Message, CallbackQuery
+from requests import HTTPError
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
-from api.methods import get_orders, get_supplies, get_stickers
-from utils import join_orders, check_registration, get_supplies_markup, fetch_products
-from db_client import prepare_db
-from db_client import add_stickers_to_db, insert_user, select_orders_by_supply
+from api.errors import WBAPIError
+from api.methods import get_orders, get_supplies
 from db_client import bulk_insert_orders, bulk_insert_supplies
-from stickers import create_barcode_pdf, create_stickers
+from db_client import insert_user
+from db_client import prepare_db
+from utils import join_orders, check_registration, get_supplies_markup, prepare_stickers, delete_tempfiles
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
-WB_API_KEY = os.environ['WB_API_KEY']
 
 
 def ask_for_registration(message: Message):
@@ -54,11 +54,19 @@ def show_active_supplies(call: CallbackQuery):
     """
     Отображает текущие незакрытые поставки
     """
-    if active_supplies := get_supplies(WB_API_KEY):
+    try:
+        active_supplies = get_supplies()
+    except WBAPIError:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+        return
+    except HTTPError:
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        return
+
+    if active_supplies:
         bot.answer_callback_query(call.id, 'Поставки загружены')
     else:
         bot.answer_callback_query(call.id, 'Нет активных поставок')
-        return
 
     bot.send_message(
         chat_id=call.message.chat.id,
@@ -77,9 +85,14 @@ def handle_orders(call: CallbackQuery):
     после чего загружает в базу данных
     """
     supply_id = call.data.lstrip('supply_')
-    orders = get_orders(
-        api_key=WB_API_KEY,
-        supply_id=supply_id)
+    try:
+        orders = get_orders(supply_id=supply_id)
+    except WBAPIError:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+        return
+    except HTTPError:
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        return
 
     order_markup = InlineKeyboardMarkup()
     order_markup.add(
@@ -131,10 +144,18 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
         return
 
     bot.answer_callback_query(call.id, 'Идёт загрузка. Подождите')
-    supplies = get_supplies(
-        api_key=WB_API_KEY,
-        only_active=False,
-        number_of_supplies=number_of_supplies)
+
+    try:
+        supplies = get_supplies(
+            only_active=False,
+            number_of_supplies=number_of_supplies)
+    except WBAPIError:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+        return
+    except HTTPError:
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        return
+
     bot.send_message(
         chat_id=call.message.chat.id,
         text=f'Последние {number_of_supplies} поставок',
@@ -182,27 +203,23 @@ def send_stickers(call: CallbackQuery):
     """
     Подготавливает и отправляет пользователю стикеры по данной поставке
     """
-
     supply_id = call.data.lstrip('stickers_for_supply_')
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
 
-    orders = select_orders_by_supply(supply_id)
-    products = fetch_products(WB_API_KEY, orders)
-    stickers = get_stickers(WB_API_KEY, orders)
-    add_stickers_to_db(stickers)
-
-    orders = select_orders_by_supply(supply_id)
-    product_report = create_barcode_pdf(products)
-    sticker_file_name = create_stickers(orders, supply_id)
-
-    if failed_articles := product_report['failed']:
-        missing_articles = "\n".join(failed_articles)
-        message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать штрихкод для товаров:\n{missing_articles}'
+    try:
+        sticker_file_name = prepare_stickers(supply_id)
+    except WBAPIError:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+        return
+    except HTTPError:
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        return
     else:
-        message_text = f'Стикеры по поставке {supply_id}'
-    with open(sticker_file_name, 'rb') as file:
-        bot.send_message(call.message.chat.id, message_text)
-        bot.send_document(call.message.chat.id, file)
+        with open(sticker_file_name, 'rb') as file:
+            bot.send_document(call.message.chat.id, file)
+        bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+    finally:
+        delete_tempfiles()
 
 
 def main():

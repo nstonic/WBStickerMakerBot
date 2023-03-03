@@ -48,4 +48,5 @@ class OrderModel(BaseDbModel):
     supply = ForeignKeyField(SupplyModel, backref='orders', on_delete='CASCADE')
     product = ForeignKeyField(ProductModel, backref='orders', on_delete='CASCADE')
     sticker = TextField(null=True)
+    sticker_path = CharField(max_length=128)
     created_at = DateTimeField()

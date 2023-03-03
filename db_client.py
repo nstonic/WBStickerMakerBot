@@ -1,3 +1,5 @@
+import os
+
 from peewee import ModelSelect
 
 from api.classes import Supply, Order, Product, Sticker
@@ -9,11 +11,10 @@ def prepare_db(owner_id: int, owner_full_name: str):
     @param owner_id: Telegram ID владельца бота
     @param owner_full_name: Полное имя владельца бота
     """
-    db.create_tables(
-        [UserModel, SupplyModel, OrderModel, ProductModel])
-    UserModel.update({'is_admin': False}). \
-        where(UserModel.is_admin, UserModel.id != owner_id). \
-        execute()
+    db.create_tables([UserModel, SupplyModel, OrderModel, ProductModel])
+    UserModel.update({'is_admin': False}) \
+        .where(UserModel.is_admin, UserModel.id != owner_id) \
+        .execute()
     UserModel.insert(
         id=owner_id,
         full_name=owner_full_name,
@@ -44,7 +45,12 @@ def bulk_insert_supplies(supplies: list[Supply]):
     запросов к API
     """
     supplies_rows = [supply.to_tuple() for supply in supplies]
-    supplies_fields = [SupplyModel.id, SupplyModel.name, SupplyModel.closed_at, SupplyModel.create_at, SupplyModel.done]
+    supplies_fields = [
+        SupplyModel.id,
+        SupplyModel.name,
+        SupplyModel.closed_at,
+        SupplyModel.create_at,
+        SupplyModel.done]
     with db.atomic():
         SupplyModel.insert_many(
             rows=supplies_rows,
@@ -59,18 +65,28 @@ def bulk_insert_orders(orders: list[Order], supply_id: str):
     @param supply_id: ID поставки
     """
     OrderModel.delete().where(OrderModel.supply == supply_id)
-    articles = [[order.article] for order in orders]
+    products_rows = [[order.article] for order in orders]
     with db.atomic():
         ProductModel.insert_many(
-            rows=articles,
+            rows=products_rows,
             fields=[ProductModel.article]
         ).on_conflict_ignore().execute()
 
     orders_data = []
     for order in orders:
         product = ProductModel.get(ProductModel.article == order.article)
-        orders_data.append([order.order_id, product, order.created_at, supply_id])
-    order_fields = [OrderModel.id, OrderModel.product, OrderModel.created_at, OrderModel.supply]
+        orders_data.append(
+            [order.order_id,
+             product,
+             order.created_at,
+             supply_id,
+             os.path.join('stickers', f'{order.order_id}.png')])
+    order_fields = [
+        OrderModel.id,
+        OrderModel.product,
+        OrderModel.created_at,
+        OrderModel.supply,
+        OrderModel.sticker_path]
     with db.atomic():
         OrderModel.insert_many(rows=orders_data, fields=order_fields).on_conflict_replace().execute()
 
