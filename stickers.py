@@ -30,7 +30,7 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
     os.makedirs(supply_path, exist_ok=True)
 
     for article, orders in grouped_orders.items():
-        file_name = f'{sanitize_filename(article.strip())}.pdf'
+        file_name = sanitize_filename(article.strip())
         output_pdf_path = os.path.join(supply_path, f'{file_name}.pdf')
 
         doc = BaseDocTemplate(output_pdf_path, showBoundary=0)
