@@ -2,16 +2,15 @@ import os
 
 import telebot
 from dotenv import load_dotenv
-from telebot.types import Message, CallbackQuery
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
-from api.methods import get_orders, get_supplies, get_stickers
-from utils import join_orders, check_registration, get_supplies_markup, fetch_products
-from db_client import prepare_db
-from db_client import add_stickers_to_db, insert_user, select_orders_by_supply
+from api.methods import get_orders, get_supplies
 from db_client import bulk_insert_orders, bulk_insert_supplies
-from stickers import create_barcode_pdf, create_stickers
+from db_client import insert_user
+from db_client import prepare_db
+from utils import join_orders, check_registration, get_supplies_markup, prepare_stickers
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -182,27 +181,12 @@ def send_stickers(call: CallbackQuery):
     """
     Подготавливает и отправляет пользователю стикеры по данной поставке
     """
-
     supply_id = call.data.lstrip('stickers_for_supply_')
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
-
-    orders = select_orders_by_supply(supply_id)
-    products = fetch_products(WB_API_KEY, orders)
-    stickers = get_stickers(WB_API_KEY, orders)
-    add_stickers_to_db(stickers)
-
-    orders = select_orders_by_supply(supply_id)
-    product_report = create_barcode_pdf(products)
-    sticker_file_name = create_stickers(orders, supply_id)
-
-    if failed_articles := product_report['failed']:
-        missing_articles = "\n".join(failed_articles)
-        message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать штрихкод для товаров:\n{missing_articles}'
-    else:
-        message_text = f'Стикеры по поставке {supply_id}'
+    sticker_file_name = prepare_stickers(supply_id, WB_API_KEY)
     with open(sticker_file_name, 'rb') as file:
-        bot.send_message(call.message.chat.id, message_text)
         bot.send_document(call.message.chat.id, file)
+    bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
 
 
 def main():

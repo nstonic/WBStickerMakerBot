@@ -1,3 +1,4 @@
+import shutil
 from collections import Counter
 from typing import Callable
 
@@ -6,8 +7,11 @@ from telebot.types import Message, CallbackQuery, InlineKeyboardButton
 from telebot.util import quick_markup
 
 from api.classes import Order, Supply, Product
-from api.methods import get_product
-from db_client import check_user_registration, set_products_name_and_barcode
+from api.methods import get_product, get_stickers
+from db_client import check_user_registration, set_products_name_and_barcode, select_orders_by_supply, \
+    add_stickers_to_db
+from models import OrderModel
+from stickers import create_pdf
 
 
 def get_supplies_markup(supplies: list[Supply]):
@@ -87,3 +91,36 @@ def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
     products = [get_product(api_key, article) for article in articles]
     set_products_name_and_barcode(products)
     return products
+
+
+def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
+    """
+    Группирует заказы по артикулам
+    @param orders: Выборка заказов из БД
+    @return: словарь со сгруппированными заказами
+    """
+    grouped_orders = {
+        order.product.article: []
+        for order in orders}
+    for order in orders:
+        grouped_orders[order.product.article].append(order)
+    return grouped_orders
+
+
+def prepare_stickers(supply_id: str, ari_key: str) -> str:
+    """Собирает информацию по для стикеров.
+    Подготавливает pdf, архивирует их и возвращает путь к zip архиву
+    @param supply_id: ID поставки
+    @param ari_key: api ключ wildberries
+    @return: адрес к файлу с архивом
+    """
+    orders = select_orders_by_supply(supply_id)
+    fetch_products(ari_key, orders)
+    stickers = get_stickers(ari_key, orders)
+    add_stickers_to_db(stickers)
+
+    orders = select_orders_by_supply(supply_id)
+    grouped_orders = group_orders_by_article(orders)
+    supply_path = create_pdf(grouped_orders, supply_id)
+    shutil.make_archive(supply_path, 'zip', supply_path)
+    return f'{supply_path}.zip'
