@@ -39,7 +39,7 @@ class Product:
     barcode: str = None
 
     @staticmethod
-    def parse_from_pc(product_card: dict):
+    def parse_from_card(product_card: dict):
         """Парсит товар из карты товара, полученной из json
         @param product_card: Карта товара в виде словаря из json
         @return: Объект парсинга товара

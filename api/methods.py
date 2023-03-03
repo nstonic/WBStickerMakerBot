@@ -1,7 +1,7 @@
 from peewee import ModelSelect
 
-from .classes import Product, Order, Supply, Sticker
-from .requests import get_supplies_response, get_orders_response, get_product_response, get_sticker_response
+from .classes import *
+from .requests import *
 
 
 def get_orders(supply_id: str) -> list[Order]:
@@ -27,7 +27,7 @@ def get_product(article: str) -> Product:
     response = get_product_response(article)
     for product_card in response.json()["data"]:
         if product_card["vendorCode"] == article:
-            return Product.parse_from_pc(product_card)
+            return Product.parse_from_card(product_card)
     return Product(article=article)
 
 

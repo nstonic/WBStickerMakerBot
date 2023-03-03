@@ -4,8 +4,8 @@ from base64 import b64decode
 from pathvalidate import sanitize_filename
 from reportlab.graphics.barcode import code128
 from reportlab.lib.units import mm
-from reportlab.platypus import Image, BaseDocTemplate, PageTemplate, Frame, NextPageTemplate, \
-    PageBreak
+from reportlab.platypus import BaseDocTemplate, PageTemplate, NextPageTemplate
+from reportlab.platypus import Image, Frame, PageBreak
 
 from models import OrderModel
 
@@ -41,6 +41,7 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
             Elements.append(Image(order.sticker_path, useDPI=300, width=95 * mm, height=65 * mm))
             Elements.append(NextPageTemplate('Barcode'))
             Elements.append(PageBreak())
+            Elements.append(NextPageTemplate('Image'))
             Elements.append(PageBreak())
 
             def barcode(canvas, doc):
@@ -55,7 +56,6 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
                                                onPage=barcode)])
         doc.build(Elements)
     return supply_path
-
 
 # def create_barcode_pdf(products: list[Product]) -> dict[str:list]:
 #     """Создает pdf со штрихкодом и описанием товара
