@@ -79,16 +79,15 @@ def check_registration(registration_func: Callable):
     return check_registration_decorator
 
 
-def fetch_products(api_key: str, orders: ModelSelect) -> list[Product]:
+def fetch_products(orders: ModelSelect) -> list[Product]:
     """Собирает данные по продуктам из поставки
     @param orders: Заказы полученные из базы
-    @param api_key: api ключ wildberries
     @return: список продуктов, представленных как результаты парсинга
     запросов к API
     @raise: HttpError, WBAPIError
     """
     articles = set([order.product.article for order in orders])
-    products = [get_product(api_key, article) for article in articles]
+    products = [get_product(article) for article in articles]
     set_products_name_and_barcode(products)
     return products
 
@@ -107,16 +106,15 @@ def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
     return grouped_orders
 
 
-def prepare_stickers(supply_id: str, ari_key: str) -> str:
+def prepare_stickers(supply_id: str) -> str:
     """Собирает информацию по для стикеров.
     Подготавливает pdf, архивирует их и возвращает путь к zip архиву
     @param supply_id: ID поставки
-    @param ari_key: api ключ wildberries
     @return: адрес к файлу с архивом
     """
     orders = select_orders_by_supply(supply_id)
-    fetch_products(ari_key, orders)
-    stickers = get_stickers(ari_key, orders)
+    fetch_products(orders)
+    stickers = get_stickers(orders)
     add_stickers_to_db(stickers)
 
     orders = select_orders_by_supply(supply_id)
