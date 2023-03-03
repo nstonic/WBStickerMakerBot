@@ -1,3 +1,4 @@
+import os
 import shutil
 from collections import Counter
 from typing import Callable
@@ -122,3 +123,16 @@ def prepare_stickers(supply_id: str) -> str:
     supply_path = create_pdf(grouped_orders, supply_id)
     shutil.make_archive(supply_path, 'zip', supply_path)
     return f'{supply_path}.zip'
+
+
+def delete_tempfiles():
+    """
+    Удаляет папки и zip архивы с pdf стикерами
+    """
+    dir_content = os.listdir()
+    for path in dir_content:
+        if not path.endswith('.py'):
+            if path.startswith('Stickers'):
+                shutil.rmtree(path, ignore_errors=True)
+            if path.endswith('.zip'):
+                os.remove(path)
