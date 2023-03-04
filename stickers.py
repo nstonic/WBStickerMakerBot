@@ -27,7 +27,6 @@ def save_stickers_to_png(orders: list[OrderModel]):
         with open(order.sticker_path, 'wb') as file:
             file.write(sticker_in_byte_format)
         sticker_pathes.append(order.sticker_path)
-    return sticker_pathes
 
 
 def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) -> tuple[str, dict]:
