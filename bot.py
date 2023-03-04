@@ -56,7 +56,8 @@ def start(message: Message):
 @check_registration(ask_for_registration)
 def show_active_supplies(call: CallbackQuery):
     """
-    Отображает текущие незакрытые поставки
+    Обработчик поставок.
+    Отображает текущие незакрытые поставки. Загружает их в базу
     """
     try:
         active_supplies = get_supplies()
@@ -223,7 +224,8 @@ def send_stickers(call: CallbackQuery):
             bot.send_document(call.message.chat.id, file)
         if failed_stickers := stickers_report['failed']:
             missing_articles = "\n".join(failed_stickers)
-            message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать стикеры для товаров:\n{missing_articles}'
+            message_text = f'Стикеры по поставке {supply_id}.\n' \
+                           f'Не удалось создать стикеры для товаров:\n{missing_articles}'
         else:
             message_text = f'Стикеры по поставке {supply_id}'
         bot.send_message(call.message.chat.id, message_text)
