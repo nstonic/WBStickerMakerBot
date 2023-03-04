@@ -22,14 +22,6 @@ def prepare_db(owner_id: int, owner_full_name: str):
     ).on_conflict_ignore().execute()
 
 
-def check_user_registration(user_id: int) -> UserModel | None:
-    """Проверяет зарегистрирован ли пользователь в БД
-    @param user_id: Telegram ID пользователя
-    @return: Объект пользователя из БД, если пользователь найден, в противном случае None
-    """
-    return UserModel.get_or_none(UserModel.id == user_id)
-
-
 def insert_user(user_id: int, user_full_name: str) -> UserModel:
     """Регистрирует пользователя в базе
     @param user_id: Telegram ID пользователя
@@ -89,15 +81,6 @@ def bulk_insert_orders(orders: list[Order], supply_id: str):
         OrderModel.sticker_path]
     with db.atomic():
         OrderModel.insert_many(rows=orders_data, fields=order_fields).on_conflict_replace().execute()
-
-
-def select_orders_by_supply(supply_id: str) -> ModelSelect:
-    """
-    Выгружает из БД все заказы по данной поставке
-    @param supply_id: ID поставки
-    @return: Результат запроса к БД
-    """
-    return OrderModel.select().where(OrderModel.supply_id == supply_id)
 
 
 def set_products_name_and_barcode(products: list[Product]):

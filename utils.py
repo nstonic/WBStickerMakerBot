@@ -13,7 +13,7 @@ from db_client import check_user_registration
 from db_client import set_products_name_and_barcode
 from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
-from models import OrderModel
+from models import OrderModel, UserModel
 from stickers import create_stickers
 
 
@@ -58,10 +58,6 @@ def check_registration(registration_func: Callable):
      не зарегистрирован. Она должна принимать в качестве аргумента Message"""
 
     def check_registration_decorator(func: Callable):
-        """
-        @param func: Проверяемая функция должна первым аргументом принимать
-        либо CallbackQuery, либо Message
-        """
 
         def wrapper(*args, **kwargs):
             first_arg, *_ = args
@@ -70,9 +66,11 @@ def check_registration(registration_func: Callable):
             elif isinstance(first_arg, CallbackQuery):
                 message = first_arg.message
             else:
-                return
+                raise TypeError(
+                    'Проверяемая функция должна первым аргументом принимать либо CallbackQuery, либо Message'
+                )
 
-            if check_user_registration(message.chat.id):
+            if UserModel.get_or_none(UserModel.id == message.chat.id):
                 return func(*args, **kwargs)
             else:
                 registration_func(message)
@@ -100,6 +98,10 @@ def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
     Группирует заказы по артикулам
     @param orders: Выборка заказов из БД
     @return: словарь со сгруппированными заказами
+            {
+              Артикул1 : [Заказ1, Заказ2]
+              и т.д.
+            }
     """
     grouped_orders = {
         order.product.article: []
@@ -110,17 +112,17 @@ def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
 
 
 def prepare_stickers(supply_id: str) -> tuple[str, dict]:
-    """Собирает информацию по для стикеров.
+    """Собирает информацию для стикеров.
     Подготавливает pdf, архивирует их и возвращает путь к zip архиву
     @param supply_id: ID поставки
     @return: адрес к файлу с архивом
     """
-    orders = select_orders_by_supply(supply_id)
+    orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
     fetch_products(orders)
     stickers = get_stickers(orders)
     add_stickers_to_db(stickers)
 
-    orders = select_orders_by_supply(supply_id)
+    orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
     grouped_orders = group_orders_by_article(orders)
     supply_path, stickers_report = create_stickers(grouped_orders, supply_id)
     shutil.make_archive(supply_path, 'zip', supply_path)
