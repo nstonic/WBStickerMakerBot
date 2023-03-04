@@ -1,8 +1,10 @@
 import os
 from base64 import b64decode
 
+from jinja2 import Template
 from pathvalidate import sanitize_filename
 from reportlab.graphics.barcode import code128
+from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -10,6 +12,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import BaseDocTemplate, PageTemplate, NextPageTemplate
 from reportlab.platypus import Image, Frame, PageBreak
 from reportlab.platypus.para import Paragraph
+from reportlab.platypus.tables import Table, TableStyle
 
 from models import OrderModel
 
@@ -43,7 +46,6 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
     """
     supply_path = sanitize_filename(f'Stickers for {supply_id}')
     os.makedirs(supply_path, exist_ok=True)
-
     pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
 
     for article, orders in grouped_orders.items():
@@ -52,27 +54,30 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
 
         pdf = BaseDocTemplate(output_pdf_path, showBoundary=0)
         frame_sticker = Frame(0, 0, 120 * mm, 75 * mm)
-        frame_description = Frame(10 * mm, 0, 100 * mm, 40 * mm)
+        frame_description = Frame(10 * mm, 5 * mm, 100 * mm, 40 * mm)
         save_stickers_to_png(orders)
-        style = getSampleStyleSheet()['Normal']
+        style = getSampleStyleSheet()['BodyText']
         style.fontName = 'Arial'
 
         elements = []
         for order in orders:
+            data = [
+                [Paragraph(order.product.name, style)],
+                [Paragraph(f'Артикул: {order.product.article}', style)],
+                [Paragraph('Страна: Россия', style)],
+                [Paragraph('Бренд: CVT', style)]]
+
             elements.append(Image(order.sticker_path, useDPI=300, width=95 * mm, height=65 * mm))
             elements.append(NextPageTemplate('Barcode'))
             elements.append(PageBreak())
-            elements.append(
-                Paragraph(
-                    f'{order.product.name} | Артикул: {order.product.article} | Страна: Россия | Бренд: CVT',
-                    style=style))
+            elements.append(Table(data, colWidths=[100 * mm]))
             elements.append(NextPageTemplate('Image'))
             elements.append(PageBreak())
 
             def barcode(canvas, doc):
                 canvas.saveState()
                 barcode128 = code128.Code128(order.product.barcode, barHeight=50, barWidth=1.45, humanReadable=True)
-                barcode128.drawOn(canvas, y=50 * mm, x=19.5 * mm)
+                barcode128.drawOn(canvas, x=19.5 * mm, y=53 * mm)
                 canvas.restoreState()
 
             pdf.addPageTemplates([PageTemplate(id='Image', frames=frame_sticker, pagesize=[120 * mm, 75 * mm]),
