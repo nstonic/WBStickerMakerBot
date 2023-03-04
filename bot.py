@@ -223,7 +223,7 @@ def send_stickers(call: CallbackQuery):
             bot.send_document(call.message.chat.id, file)
         if failed_stickers := stickers_report['failed']:
             missing_articles = "\n".join(failed_stickers)
-            message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать штрихкод для товаров:\n{missing_articles}'
+            message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать стикеры для товаров:\n{missing_articles}'
         else:
             message_text = f'Стикеры по поставке {supply_id}'
         bot.send_message(call.message.chat.id, message_text)

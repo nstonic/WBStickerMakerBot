@@ -14,7 +14,7 @@ from db_client import set_products_name_and_barcode
 from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
 from models import OrderModel
-from stickers import create_pdf
+from stickers import create_stickers
 
 
 def get_supplies_markup(supplies: list[Supply]):
@@ -122,7 +122,7 @@ def prepare_stickers(supply_id: str) -> tuple[str, dict]:
 
     orders = select_orders_by_supply(supply_id)
     grouped_orders = group_orders_by_article(orders)
-    supply_path, stickers_report = create_pdf(grouped_orders, supply_id)
+    supply_path, stickers_report = create_stickers(grouped_orders, supply_id)
     shutil.make_archive(supply_path, 'zip', supply_path)
     return f'{supply_path}.zip', stickers_report
 
