@@ -69,10 +69,11 @@ def create_stickers_for_orders(orders: list[OrderModel], output_pdf_path: str):
     @param orders: Список заказов
     @param output_pdf_path: путь, куда сохранять файл
     """
+    sticker_size = (120 * mm, 75 * mm)
     pdf = BaseDocTemplate(output_pdf_path, showBoundary=0)
     style = getSampleStyleSheet()['BodyText']
     style.fontName = 'Arial'
-    frame_sticker = Frame(0, 0, 120 * mm, 75 * mm)
+    frame_sticker = Frame(0, 0, *sticker_size)
     frame_description = Frame(10 * mm, 5 * mm, 100 * mm, 40 * mm)
 
     elements = []
@@ -98,7 +99,7 @@ def create_stickers_for_orders(orders: list[OrderModel], output_pdf_path: str):
             canvas.restoreState()
 
         pdf.addPageTemplates(
-            [PageTemplate(id='Image', frames=frame_sticker, pagesize=[120 * mm, 75 * mm]),
-             PageTemplate(id='Barcode', frames=frame_description, pagesize=[120 * mm, 75 * mm], onPage=barcode)]
+            [PageTemplate(id='Image', frames=frame_sticker, pagesize=sticker_size),
+             PageTemplate(id='Barcode', frames=frame_description, pagesize=sticker_size, onPage=barcode)]
         )
     pdf.build(elements)
