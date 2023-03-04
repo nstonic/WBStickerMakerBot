@@ -11,7 +11,7 @@
 pip install -r requirements.txt
 ```
 
-Ееобходимо установить следующие переменные окружения 
+Необходимо установить следующие переменные окружения 
 TG_BOT_TOKEN - токен телеграмм бота, полученный от [BotFather](https://t.me/BotFather)
 WB_API_KEY - API ключ Wildberries
 А также данные владельца
