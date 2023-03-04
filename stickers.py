@@ -17,7 +17,7 @@ from models import OrderModel
 
 def save_stickers_to_png(orders: list[OrderModel]):
     """
-    Сохраняет стикер заказа в png файл
+    Сохраняет стикеры заказов в png файл
     @param orders: Список заказов, полученных из БД
     """
     os.makedirs('Stickers', exist_ok=True)
@@ -33,7 +33,6 @@ def save_stickers_to_png(orders: list[OrderModel]):
 def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) -> tuple[str, dict]:
     """
     Создает pdf файлы со стикерами для каждого артикула.
-    В файл помещаются стикеры и штрихкоды для каждого заказ по данному артикулу
     @param grouped_orders: словарь со заказами, сгруппированными по артикулам
                             {
                               Артикул1 : [Заказ1, Заказ2]
@@ -56,7 +55,7 @@ def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) 
         output_pdf_path = os.path.join(supply_path, f'{file_name}.pdf')
         save_stickers_to_png(orders)
         try:
-            create_stickers_for_article(orders, output_pdf_path)
+            create_stickers_for_orders(orders, output_pdf_path)
         except TypeError:
             stickers_report['failed'].append(article)
             continue
@@ -65,7 +64,12 @@ def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) 
     return supply_path, stickers_report
 
 
-def create_stickers_for_article(orders, output_pdf_path):
+def create_stickers_for_orders(orders: list[OrderModel], output_pdf_path: str):
+    """Создает pdf файл, в который помещает все стикеры для переданного списка заказов.
+    В файл помещаются QR коды и штрихкоды.
+    @param orders: Список заказов
+    @param output_pdf_path: путь, куда сохранять файл
+    """
     pdf = BaseDocTemplate(output_pdf_path, showBoundary=0)
     style = getSampleStyleSheet()['BodyText']
     style.fontName = 'Arial'
