@@ -1,10 +1,8 @@
 import os
 from base64 import b64decode
 
-from jinja2 import Template
 from pathvalidate import sanitize_filename
 from reportlab.graphics.barcode import code128
-from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -12,7 +10,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import BaseDocTemplate, PageTemplate, NextPageTemplate
 from reportlab.platypus import Image, Frame, PageBreak
 from reportlab.platypus.para import Paragraph
-from reportlab.platypus.tables import Table, TableStyle
+from reportlab.platypus.tables import Table
 
 from models import OrderModel
 
@@ -32,7 +30,7 @@ def save_stickers_to_png(orders: list[OrderModel]):
     return sticker_pathes
 
 
-def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
+def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str) -> tuple[str, dict]:
     """
     Создает pdf файлы со стикерами для каждого артикула.
     В файл помещаются стикеры и штрихкоды для каждого заказ по данному артикулу
@@ -42,30 +40,41 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
                               и т.д.
                             }
     @param supply_id: ID поставки
-    @return: путь к папке с полученными файлами
+    @return: путь к папке с полученными файлами и отчёт о создании стикеров
     """
+    stickers_report = {
+        'successfully': [],
+        'failed': []
+    }
+
     supply_path = sanitize_filename(f'Stickers for {supply_id}')
     os.makedirs(supply_path, exist_ok=True)
     pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+    style = getSampleStyleSheet()['BodyText']
+    style.fontName = 'Arial'
+    frame_sticker = Frame(0, 0, 120 * mm, 75 * mm)
+    frame_description = Frame(10 * mm, 5 * mm, 100 * mm, 40 * mm)
 
     for article, orders in grouped_orders.items():
         file_name = sanitize_filename(article.strip())
         output_pdf_path = os.path.join(supply_path, f'{file_name}.pdf')
-
         pdf = BaseDocTemplate(output_pdf_path, showBoundary=0)
-        frame_sticker = Frame(0, 0, 120 * mm, 75 * mm)
-        frame_description = Frame(10 * mm, 5 * mm, 100 * mm, 40 * mm)
         save_stickers_to_png(orders)
-        style = getSampleStyleSheet()['BodyText']
-        style.fontName = 'Arial'
 
         elements = []
         for order in orders:
-            data = [
-                [Paragraph(order.product.name, style)],
-                [Paragraph(f'Артикул: {order.product.article}', style)],
-                [Paragraph('Страна: Россия', style)],
-                [Paragraph('Бренд: CVT', style)]]
+            try:
+                data = [
+                    [Paragraph(order.product.name, style)],
+                    [Paragraph(f'Артикул: {order.product.article}', style)],
+                    [Paragraph('Страна: Россия', style)],
+                    [Paragraph('Бренд: CVT', style)]
+                ]
+            except TypeError:
+                stickers_report['failed'].append(order.product.article)
+                continue
+            else:
+                stickers_report['successfully'].append(order.product.article)
 
             elements.append(Image(order.sticker_path, useDPI=300, width=95 * mm, height=65 * mm))
             elements.append(NextPageTemplate('Barcode'))
@@ -80,8 +89,12 @@ def create_pdf(grouped_orders: dict[str:list[OrderModel]], supply_id: str):
                 barcode128.drawOn(canvas, x=19.5 * mm, y=53 * mm)
                 canvas.restoreState()
 
-            pdf.addPageTemplates([PageTemplate(id='Image', frames=frame_sticker, pagesize=[120 * mm, 75 * mm]),
-                                  PageTemplate(id='Barcode', frames=frame_description, pagesize=[120 * mm, 75 * mm],
-                                               onPage=barcode)])
+            pdf.addPageTemplates(
+                [
+                    PageTemplate(id='Image', frames=frame_sticker, pagesize=[120 * mm, 75 * mm]),
+                    PageTemplate(id='Barcode', frames=frame_description, pagesize=[120 * mm, 75 * mm],
+                                 onPage=barcode)
+                ]
+            )
         pdf.build(elements)
-    return supply_path
+    return supply_path, stickers_report

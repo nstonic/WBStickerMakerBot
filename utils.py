@@ -109,7 +109,7 @@ def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
     return grouped_orders
 
 
-def prepare_stickers(supply_id: str) -> str:
+def prepare_stickers(supply_id: str) -> tuple[str, dict]:
     """Собирает информацию по для стикеров.
     Подготавливает pdf, архивирует их и возвращает путь к zip архиву
     @param supply_id: ID поставки
@@ -122,9 +122,9 @@ def prepare_stickers(supply_id: str) -> str:
 
     orders = select_orders_by_supply(supply_id)
     grouped_orders = group_orders_by_article(orders)
-    supply_path = create_pdf(grouped_orders, supply_id)
+    supply_path, stickers_report = create_pdf(grouped_orders, supply_id)
     shutil.make_archive(supply_path, 'zip', supply_path)
-    return f'{supply_path}.zip'
+    return f'{supply_path}.zip', stickers_report
 
 
 def delete_tempfiles():

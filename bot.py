@@ -41,7 +41,6 @@ def ask_for_registration(message: Message):
 @bot.message_handler(commands=['start'])
 @check_registration(ask_for_registration)
 def start(message: Message):
-    bot.delete_message(message.chat.id, message.id)
     supplies_markup = InlineKeyboardMarkup()
     supplies_markup.add(
         InlineKeyboardButton(
@@ -212,7 +211,7 @@ def send_stickers(call: CallbackQuery):
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
 
     try:
-        sticker_file_name = prepare_stickers(supply_id)
+        sticker_file_name, stickers_report = prepare_stickers(supply_id)
     except WBAPIError:
         bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
         return
@@ -222,7 +221,12 @@ def send_stickers(call: CallbackQuery):
     else:
         with open(sticker_file_name, 'rb') as file:
             bot.send_document(call.message.chat.id, file)
-        bot.send_message(call.message.chat.id, f'Стикеры по поставке {supply_id}')
+        if failed_stickers := stickers_report['failed']:
+            missing_articles = "\n".join(failed_stickers)
+            message_text = f'Стикеры по поставке {supply_id}.\nНе удалось создать штрихкод для товаров:\n{missing_articles}'
+        else:
+            message_text = f'Стикеры по поставке {supply_id}'
+        bot.send_message(call.message.chat.id, message_text)
     finally:
         delete_tempfiles()
 
