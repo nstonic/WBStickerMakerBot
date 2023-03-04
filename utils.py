@@ -7,12 +7,10 @@ from peewee import ModelSelect
 from telebot.types import Message, CallbackQuery, InlineKeyboardButton
 from telebot.util import quick_markup
 
-from api.classes import Order, Supply, Product
+from api.classes import Order, Supply
 from api.methods import get_product, get_stickers
-from db_client import check_user_registration
-from db_client import set_products_name_and_barcode
-from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
+from db_client import set_products_name_and_barcode
 from models import OrderModel, UserModel
 from stickers import create_stickers
 
@@ -80,19 +78,6 @@ def check_registration(registration_func: Callable):
     return check_registration_decorator
 
 
-def fetch_products(orders: ModelSelect) -> list[Product]:
-    """Собирает данные по продуктам из поставки
-    @param orders: Заказы полученные из базы
-    @return: список продуктов, представленных как результаты парсинга
-    запросов к API
-    @raise: HttpError, WBAPIError
-    """
-    articles = set([order.product.article for order in orders])
-    products = [get_product(article) for article in articles]
-    set_products_name_and_barcode(products)
-    return products
-
-
 def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
     """
     Группирует заказы по артикулам
@@ -116,7 +101,9 @@ def add_stickers_and_products_to_orders(supply_id: str):
     @param supply_id: ID поставки
     """
     orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
-    fetch_products(orders)
+    articles = set([order.product.article for order in orders])
+    products = [get_product(article) for article in articles]
+    set_products_name_and_barcode(products)
     stickers = get_stickers(orders)
     add_stickers_to_db(stickers)
 

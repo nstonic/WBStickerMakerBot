@@ -1,7 +1,5 @@
 import os
 
-from peewee import ModelSelect
-
 from api.classes import Supply, Order, Product, Sticker
 from models import db, UserModel, SupplyModel, OrderModel, ProductModel
 
