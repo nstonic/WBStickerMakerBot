@@ -19,7 +19,9 @@ pip install -r requirements.txt
 - OWNER_ID = телеграмм id
 - OWNER_FULL_NAME = ФИО
 
-Вот запускается командой
+### Как запустить
+
+Бот запускается командой
 ```
 python bot.py
 ``` 
