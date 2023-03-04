@@ -13,7 +13,7 @@ from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
-from utils import join_orders
+from utils import join_orders, add_stickers_and_products_to_orders
 from utils import check_registration
 from utils import get_supplies_markup
 from utils import prepare_stickers
@@ -212,6 +212,7 @@ def send_stickers(call: CallbackQuery):
     bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
 
     try:
+        add_stickers_and_products_to_orders(supply_id)
         sticker_file_name, stickers_report = prepare_stickers(supply_id)
     except WBAPIError:
         bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')

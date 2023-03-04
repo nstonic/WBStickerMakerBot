@@ -111,17 +111,22 @@ def group_orders_by_article(orders: ModelSelect) -> dict[str:list[OrderModel]]:
     return grouped_orders
 
 
-def prepare_stickers(supply_id: str) -> tuple[str, dict]:
-    """Собирает информацию для стикеров.
-    Подготавливает pdf, архивирует их и возвращает путь к zip архиву
+def add_stickers_and_products_to_orders(supply_id: str):
+    """Добавляет в заказы данные по товарам и стикерам
     @param supply_id: ID поставки
-    @return: адрес к файлу с архивом
     """
     orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
     fetch_products(orders)
     stickers = get_stickers(orders)
     add_stickers_to_db(stickers)
 
+
+def prepare_stickers(supply_id: str) -> tuple[str, dict]:
+    """Собирает информацию для стикеров.
+    Подготавливает pdf, архивирует их и возвращает путь к zip архиву
+    @param supply_id: ID поставки
+    @return: адрес к файлу с архивом
+    """
     orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
     grouped_orders = group_orders_by_article(orders)
     supply_path, stickers_report = create_stickers(grouped_orders, supply_id)
