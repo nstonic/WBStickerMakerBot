@@ -62,8 +62,11 @@ def show_active_supplies(call: CallbackQuery):
     """
     try:
         active_supplies = get_supplies()
-    except WBAPIError:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+    except WBAPIError as ex:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=os.environ['OWNER_ID'],
+            text=ex.__str__())
         return
     except HTTPError:
         bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
@@ -93,8 +96,11 @@ def handle_orders(call: CallbackQuery):
     supply_id = call.data.lstrip('supply_')
     try:
         orders = get_orders(supply_id=supply_id)
-    except WBAPIError:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+    except WBAPIError as ex:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=os.environ['OWNER_ID'],
+            text=ex.__str__())
         return
     except HTTPError:
         bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
@@ -155,8 +161,11 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
         supplies = get_supplies(
             only_active=False,
             number_of_supplies=number_of_supplies)
-    except WBAPIError:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+    except WBAPIError as ex:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=os.environ['OWNER_ID'],
+            text=ex.__str__())
         return
     except HTTPError:
         bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
@@ -215,8 +224,11 @@ def send_stickers(call: CallbackQuery):
     try:
         add_stickers_and_products_to_orders(supply_id)
         sticker_file_name, stickers_report = prepare_stickers(supply_id)
-    except WBAPIError:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Обратитесь к администратору')
+    except WBAPIError as ex:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=os.environ['OWNER_ID'],
+            text=ex.__str__())
         return
     except HTTPError:
         bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
