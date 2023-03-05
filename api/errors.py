@@ -1,10 +1,10 @@
 import time
 
-from requests import HTTPError, Response
+from requests import Response
 from requests.exceptions import ChunkedEncodingError
 
 
-class WBAPIError(HTTPError):
+class WBAPIError(Exception):
     """Исключение для обработки ошибок запроса к API"""
 
     def __init__(self, message: str, code: str = None):
