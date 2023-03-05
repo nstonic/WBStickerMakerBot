@@ -1,7 +1,7 @@
 from peewee import ModelSelect
 
-from .classes import *
-from .requests import *
+from .classes import Supply, Order, Product, Sticker
+from .requests import get_product_response, get_orders_response, get_sticker_response, get_supplies_response
 
 
 def get_orders(supply_id: str) -> list[Order]:
