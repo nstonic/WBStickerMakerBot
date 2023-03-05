@@ -39,8 +39,8 @@ def bulk_insert_supplies(supplies: list[Supply]):
         SupplyModel.id,
         SupplyModel.name,
         SupplyModel.closed_at,
-        SupplyModel.create_at,
-        SupplyModel.done]
+        SupplyModel.created_at,
+        SupplyModel.is_done]
     with db.atomic():
         SupplyModel.insert_many(
             rows=supplies_rows,

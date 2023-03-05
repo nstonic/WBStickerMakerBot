@@ -21,7 +21,7 @@ class UserModel(BaseDbModel):
     """Модель пользователя"""
     id = IntegerField(primary_key=True)
     full_name = CharField(max_length=200)
-    register_at = DateTimeField(default=datetime.datetime.now)
+    registered_at = DateTimeField(default=datetime.datetime.now)
     is_admin = BooleanField(default=False)
     is_active = BooleanField(default=True)
 
@@ -31,8 +31,8 @@ class SupplyModel(BaseDbModel):
     id = CharField(primary_key=True, max_length=128)
     name = CharField(max_length=128)
     closed_at = DateTimeField(null=True)
-    create_at = DateTimeField()
-    done = BooleanField()
+    created_at = DateTimeField()
+    is_done = BooleanField()
 
 
 class ProductModel(BaseDbModel):
