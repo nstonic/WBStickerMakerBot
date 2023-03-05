@@ -4,10 +4,12 @@ from collections import Counter
 from typing import Callable
 
 from peewee import ModelSelect
+from requests import HTTPError
 from telebot.types import Message, CallbackQuery, InlineKeyboardButton
 from telebot.util import quick_markup
 
 from api.classes import Order, Supply
+from api.errors import WBAPIError
 from api.methods import get_product, get_stickers
 from db_client import add_stickers_to_db
 from db_client import set_products_name_and_barcode
@@ -132,3 +134,26 @@ def delete_tempfiles():
                 shutil.rmtree(path, ignore_errors=True)
             if path.endswith('.zip'):
                 os.remove(path)
+
+
+def get_request_and_check_errors(request_func, bot, call, *args, **kwargs):
+    """
+    Проверяет запрос к api на наличие ошибок и отправляет сообщения пользователю и администратору
+    @param request_func: Функция, осуществляющая api request
+    @param bot: объект бота
+    @param call: объект CallbackQuery
+    @param args: аргументы функции request_func
+    @param kwargs: аргументы функции request_func
+    @return:
+    """
+    try:
+        return request_func(*args, **kwargs)
+    except WBAPIError as ex:
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=os.environ['OWNER_ID'],
+            text=str(ex))
+        raise
+    except HTTPError:
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        raise

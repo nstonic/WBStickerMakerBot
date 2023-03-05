@@ -13,11 +13,11 @@ from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
-from utils import join_orders, add_stickers_and_products_to_orders
-from utils import check_registration
-from utils import get_supplies_markup
-from utils import prepare_stickers
+from utils import check_registration, get_request_and_check_errors
 from utils import delete_tempfiles
+from utils import get_supplies_markup
+from utils import join_orders, add_stickers_and_products_to_orders
+from utils import prepare_stickers
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['TG_BOT_TOKEN'], parse_mode=None)
@@ -36,7 +36,7 @@ def ask_for_registration(message: Message):
     bot.send_message(
         chat_id=user_id,
         text='Бот находится в разработке.')
-        # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
+    # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
 @bot.message_handler(commands=['start'])
@@ -61,15 +61,8 @@ def show_active_supplies(call: CallbackQuery):
     Отображает текущие незакрытые поставки. Загружает их в базу
     """
     try:
-        active_supplies = get_supplies()
-    except WBAPIError as ex:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
-        bot.send_message(
-            chat_id=os.environ['OWNER_ID'],
-            text=ex.__str__())
-        return
-    except HTTPError:
-        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        active_supplies = get_request_and_check_errors(request_func=get_supplies, bot=bot, call=call)
+    except (HTTPError, WBAPIError):
         return
 
     if active_supplies:
@@ -95,15 +88,8 @@ def handle_orders(call: CallbackQuery):
     """
     supply_id = call.data.lstrip('supply_')
     try:
-        orders = get_orders(supply_id=supply_id)
-    except WBAPIError as ex:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
-        bot.send_message(
-            chat_id=os.environ['OWNER_ID'],
-            text=ex.__str__())
-        return
-    except HTTPError:
-        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        orders = get_request_and_check_errors(request_func=get_orders, bot=bot, call=call, supply_id=supply_id)
+    except (HTTPError, WBAPIError):
         return
 
     order_markup = InlineKeyboardMarkup()
@@ -158,17 +144,13 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     bot.answer_callback_query(call.id, 'Идёт загрузка. Подождите')
 
     try:
-        supplies = get_supplies(
+        supplies = get_request_and_check_errors(
+            request_func=get_supplies,
+            bot=bot,
+            call=call,
             only_active=False,
             number_of_supplies=number_of_supplies)
-    except WBAPIError as ex:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
-        bot.send_message(
-            chat_id=os.environ['OWNER_ID'],
-            text=ex.__str__())
-        return
-    except HTTPError:
-        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+    except (HTTPError, WBAPIError):
         return
 
     bot.send_message(
@@ -223,15 +205,17 @@ def send_stickers(call: CallbackQuery):
 
     try:
         add_stickers_and_products_to_orders(supply_id)
-        sticker_file_name, stickers_report = prepare_stickers(supply_id)
-    except WBAPIError as ex:
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
-        bot.send_message(
-            chat_id=os.environ['OWNER_ID'],
-            text=ex.__str__())
-        return
-    except HTTPError:
-        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        get_request_and_check_errors(
+            request_func=add_stickers_and_products_to_orders,
+            bot=bot,
+            call=call,
+            supply_id=supply_id)
+        sticker_file_name, stickers_report = get_request_and_check_errors(
+            request_func=prepare_stickers,
+            bot=bot,
+            call=call,
+            supply_id=supply_id)
+    except (HTTPError, WBAPIError):
         return
     else:
         with open(sticker_file_name, 'rb') as file:
