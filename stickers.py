@@ -20,7 +20,7 @@ def save_stickers_to_png(orders: list[OrderModel]):
     Сохраняет стикеры заказов в png файл
     @param orders: Список заказов, полученных из БД
     """
-    os.makedirs('Stickers', exist_ok=True)
+    os.makedirs('stickers', exist_ok=True)
     sticker_pathes = []
     for order in orders:
         sticker_in_byte_format = b64decode(order.sticker, validate=True)
@@ -45,7 +45,7 @@ def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) 
         'failed': []
     }
 
-    supply_path = sanitize_filename(f'Stickers for {supply_id}')
+    supply_path = sanitize_filename(f'stickers for {supply_id}')
     os.makedirs(supply_path, exist_ok=True)
     pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
 

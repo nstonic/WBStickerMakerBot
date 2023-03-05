@@ -128,7 +128,7 @@ def delete_tempfiles():
     dir_content = os.listdir()
     for path in dir_content:
         if not path.endswith('.py'):
-            if path.startswith('Stickers'):
+            if path.startswith('stickers'):
                 shutil.rmtree(path, ignore_errors=True)
             if path.endswith('.zip'):
                 os.remove(path)
