@@ -6,14 +6,14 @@ from pydantic import BaseModel, Field
 
 class Supply(BaseModel):
     """Класс для парсинга информации о поставке полученной от API"""
+    supply_id: str = Field(alias='id')
     name: str
     closed_at: datetime.datetime = Field(alias='closedAt', default=None)
-    create_at: datetime.datetime = Field(alias='createdAt')
-    done: bool
-    sup_id: str = Field(alias='id')
+    created_at: datetime.datetime = Field(alias='createdAt')
+    is_done: bool = Field(alias='done')
 
     def to_tuple(self):
-        return self.sup_id, self.name, self.closed_at, self.create_at, self.done
+        return self.supply_id, self.name, self.closed_at, self.created_at, self.is_done
 
 
 class Order(BaseModel):
@@ -25,8 +25,8 @@ class Order(BaseModel):
 
 class Sticker(BaseModel):
     """Класс для парсинга информации о стикере полученной от API"""
-    file: str
     order_id: int = Field(alias='orderId')
+    file: str
     partA: str
     partB: str
 
@@ -44,10 +44,11 @@ class Product:
         @param product_card: Карта товара в виде словаря из json
         @return: Объект парсинга товара
         """
-        name = 'Наименование продукции'
         for characteristic in product_card.get('characteristics'):
             if name := characteristic.get('Наименование'):
                 break
+        else:
+            name = 'Наименование продукции'
         barcode = product_card['sizes'][0]['skus'][0]
         article = product_card.get('vendorCode', '0000000000')
         return Product(
