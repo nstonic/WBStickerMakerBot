@@ -13,7 +13,7 @@ from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
-from stickers import save_image_from_str_to_png
+from stickers import save_image_from_str_to_png, rotate_image
 from utils import check_registration
 from utils import delete_temp_sticker_files
 from utils import get_supplies_markup
@@ -236,7 +236,7 @@ def send_stickers(call: CallbackQuery):
 @check_registration(ask_for_registration)
 def close_supply(call: CallbackQuery):
     """
-    Отправляет поставку в доставку и присылает пользователю QR код поставки
+    Отправляет поставку в доставку и присылает пользователю QR код
     """
     supply_id = call.data.lstrip('send_supply_to_deliver_')
     try:
@@ -248,10 +248,14 @@ def close_supply(call: CallbackQuery):
         return
     else:
         bot.answer_callback_query(call.id, 'Отправлено в доставку')
+
         supply_sticker = get_supply_sticker(supply_id)
+
         os.makedirs('stickers', exist_ok=True)
         image_file_path = os.path.join('stickers', f'{supply_id}.png')
+
         save_image_from_str_to_png(supply_sticker.image_string, image_file_path)
+        rotate_image(image_file_path)
         with open(image_file_path, 'rb') as image:
             bot.send_photo(call.message.chat.id, image)
     finally:

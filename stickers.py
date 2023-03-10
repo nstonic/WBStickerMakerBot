@@ -2,6 +2,7 @@ import os
 from base64 import b64decode
 
 from pathvalidate import sanitize_filename
+from PIL import Image as pil_image
 from reportlab.graphics.barcode import code128
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
@@ -16,9 +17,25 @@ from models import OrderModel
 
 
 def save_image_from_str_to_png(image: str, path: str):
+    """
+    Конвертирует строку в байты и сохраняет в png
+    :param image: байты картинки в виде строки
+    :param path: путь к файлу сохранения
+    """
     sticker_in_byte_format = b64decode(image, validate=True)
     with open(path, 'wb') as file:
         file.write(sticker_in_byte_format)
+
+
+def rotate_image(file_path: str):
+    """
+    Поворачивает картинку на 90 градусов по часовой
+    :param file_path: путь к файлу
+    """
+    with pil_image.open(file_path) as image:
+        image.load()
+        rotated_image = image.rotate(-90, expand=True)
+        rotated_image.save(file_path)
 
 
 def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) -> tuple[str, dict]:
