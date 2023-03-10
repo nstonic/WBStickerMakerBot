@@ -121,3 +121,17 @@ def get_supply_sticker_response(supply_id: str) -> Response:
         params=params)
     check_response(response)
     return response
+
+
+@retry_on_network_error
+def get_new_orders_response() -> Response:
+    """
+    Отправляет запрос к API. Получает список новых заказов.
+    @return: Response от API
+    @raise: HTTPError, WBAPIError
+    """
+    response = requests.get(
+        f"https://suppliers-api.wildberries.ru/api/v3/orders/new",
+        headers=_headers)
+    check_response(response)
+    return response

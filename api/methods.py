@@ -1,5 +1,5 @@
 from .classes import Supply, Order, Product, Sticker, SupplySticker
-from .requests import get_product_response
+from .requests import get_product_response, get_new_orders_response
 from .requests import get_supply_sticker_response
 from .requests import get_orders_response
 from .requests import get_sticker_response
@@ -88,3 +88,14 @@ def get_supply_sticker(supply_id: str) -> SupplySticker:
     """
     response = get_supply_sticker_response(supply_id)
     return SupplySticker.parse_obj(response.json())
+
+
+def get_new_orders() -> list[Order]:
+    """
+    Получает и парсит информацию о новых заказах
+    @return: список заказов, представленных как результаты парсинга
+    запросов к API
+    @raise: HTTPError, WBAPIError
+    """
+    response = get_new_orders_response()
+    return [Order.parse_obj(order) for order in response.json()['orders']]
