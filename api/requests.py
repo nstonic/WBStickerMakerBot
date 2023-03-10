@@ -87,3 +87,18 @@ def get_sticker_response(orders: list[OrderModel]) -> Response | None:
         params=params)
     check_response(response)
     return response
+
+
+@retry_on_network_error
+def send_deliver_request(supply_id: str) -> int:
+    """
+    Отправляет поставку в доставку.
+    @param supply_id: id поставки
+    @return: код запроса
+    @raise: HTTPError, WBAPIError
+    """
+    response = requests.patch(
+        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/deliver",
+        headers=_headers)
+    check_response(response)
+    return response.status_code

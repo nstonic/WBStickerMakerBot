@@ -1,7 +1,11 @@
 from peewee import ModelSelect
 
 from .classes import Supply, Order, Product, Sticker
-from .requests import get_product_response, get_orders_response, get_sticker_response, get_supplies_response
+from .requests import get_product_response
+from .requests import get_orders_response
+from .requests import get_sticker_response
+from .requests import get_supplies_response
+from .requests import send_deliver_request
 
 
 def get_orders(supply_id: str) -> list[Order]:
@@ -64,3 +68,13 @@ def get_stickers(orders: ModelSelect) -> list[Sticker]:
     """
     stickers_response = get_sticker_response(list(orders))
     return [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]
+
+
+def send_supply_to_deliver(supply_id: str) -> int:
+    """
+    Отправляет поставку в доставку.
+    @param supply_id: id поставки
+    @return: код запроса
+    @raise: HTTPError, WBAPIError
+    """
+    return send_deliver_request(supply_id)

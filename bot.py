@@ -8,7 +8,7 @@ from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
-from api.methods import get_orders, get_supplies
+from api.methods import get_orders, get_supplies, send_supply_to_deliver
 from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
@@ -105,11 +105,10 @@ def handle_orders(call: CallbackQuery):
         send_message_on_error(ex, call.id)
         return
 
-    order_markup = InlineKeyboardMarkup()
-    order_markup.add(
-        InlineKeyboardButton(
-            text='Создать стикеры',
-            callback_data=f'stickers_for_supply_{supply_id}'))
+    order_markup = quick_markup({
+        'Создать стикеры': {'callback_data': f'stickers_for_supply_{supply_id}'},
+        'Отправить в доставку': {'callback_data': f'send_supply_to_deliver_{supply_id}'}
+    }, row_width=1)
     bot.send_message(
         chat_id=call.message.chat.id,
         text=f'Заказы по поставке {supply_id}:\n\n{join_orders(orders)}',
@@ -230,6 +229,25 @@ def send_stickers(call: CallbackQuery):
         bot.send_message(call.message.chat.id, message_text)
     finally:
         delete_tempfiles()
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('send_supply_to_deliver_'))
+@check_registration(ask_for_registration)
+def handle_orders(call: CallbackQuery):
+    """
+    Обработчик заказов.
+    Запрашивает заказы по данной поставке, отправляет их одним сообщением клиенту,
+    после чего загружает в базу данных
+    """
+    supply_id = call.data.lstrip('send_supply_to_deliver_')
+    try:
+        status_code = send_supply_to_deliver(supply_id)
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call.id)
+        return
+
+    if status_code == 204:
+        bot.answer_callback_query(call.id, 'Отправлено в доставку')
 
 
 def main():
