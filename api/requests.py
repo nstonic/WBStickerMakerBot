@@ -91,7 +91,7 @@ def get_sticker_response(order_ids: list[int]) -> Response:
 @retry_on_network_error
 def send_deliver_request(supply_id: str) -> int:
     """
-    Отправляет поставку в доставку.
+    Отправляет запрос на отправку поставки в доставку.
     @param supply_id: id поставки
     @return: статус код запроса
     @raise: HTTPError, WBAPIError
@@ -134,4 +134,12 @@ def get_new_orders_response() -> Response:
         f"https://suppliers-api.wildberries.ru/api/v3/orders/new",
         headers=_headers)
     check_response(response)
+    return response
+
+
+@retry_on_network_error
+def add_orders_to_supply_request(supply_id: str, order_id: int) -> Response:
+    response = requests.patch(
+        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders/{order_id}",
+        headers=_headers)
     return response

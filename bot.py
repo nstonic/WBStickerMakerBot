@@ -3,25 +3,26 @@ import os
 import telebot
 from dotenv import load_dotenv
 from requests import HTTPError
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
+from api.methods import get_orders
+from api.methods import get_supplies
+from api.methods import get_new_orders
 from api.methods import get_supply_sticker
 from api.methods import send_supply_to_deliver
-from api.methods import get_supplies
-from api.methods import get_orders
 from db_client import bulk_insert_orders
+from db_client import get_order_by_id
 from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
 from stickers import save_image_from_str_to_png, rotate_image
-from utils import check_registration
-from utils import delete_temp_sticker_files
-from utils import get_supplies_markup
-from utils import join_orders
 from utils import add_stickers_and_products_to_orders
+from utils import check_registration, create_orders_markup
+from utils import create_supplies_markup
+from utils import delete_temp_sticker_files
+from utils import join_orders
 from utils import prepare_stickers
 
 load_dotenv()
@@ -32,8 +33,11 @@ def ask_for_registration(message: Message):
     """Отправляет администратору запрос на регистрацию пользователя"""
     user_id = message.chat.id
     register_markup = quick_markup(
-        {'Одобрить': {'callback_data': f'register_{user_id}'},
-         'Отказать': {'callback_data': f'deny_{user_id}'}})
+        {
+            'Одобрить': {'callback_data': f'register_{user_id}'},
+            'Отказать': {'callback_data': f'deny_{user_id}'}
+        }
+    )
     bot.send_message(
         chat_id=os.environ['OWNER_ID'],
         text=f'Запрос на регистрацию пользователя\n{message.from_user.full_name}',
@@ -58,15 +62,51 @@ def send_message_on_error(exception: Exception, call: CallbackQuery):
 @bot.message_handler(commands=['start'])
 @check_registration(ask_for_registration)
 def start(message: Message):
-    supplies_markup = InlineKeyboardMarkup()
-    supplies_markup.add(
-        InlineKeyboardButton(
-            text='Показать поставки',
-            callback_data='show_supplies'))
+    supplies_markup = quick_markup(
+        {
+            'Показать поставки': {'callback_data': 'show_supplies'},
+            'Новые заказы': {'callback_data': 'show_new_orders'}
+        }
+    )
     bot.send_message(
         message.chat.id,
         text='Привет',
-        reply_markup=supplies_markup)
+        reply_markup=supplies_markup
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('show_new_orders'))
+@check_registration(ask_for_registration)
+def show_new_orders(call: CallbackQuery):
+    """
+    Запрашивает новые заказы, отправляет их одним сообщением клиенту
+    """
+    try:
+        new_orders = get_new_orders()
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call)
+        return
+
+    if new_orders:
+        bot.answer_callback_query(call.id, 'Заказы загружены')
+    else:
+        bot.answer_callback_query(call.id, 'Нет новых заказов')
+
+    orders_markup = create_orders_markup(new_orders)
+    bot.send_message(
+        call.message.chat.id,
+        'Новые заказы:',
+        reply_markup=orders_markup
+    )
+    bulk_insert_orders(new_orders)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
+@check_registration(ask_for_registration)
+def show_order_details(call: CallbackQuery):
+    order_id = call.data.lstrip('order_')
+    order = get_order_by_id(int(order_id))
+    bot.answer_callback_query(call.id, f'Информация по заказу {order.id}')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'show_supplies')
@@ -90,7 +130,7 @@ def show_active_supplies(call: CallbackQuery):
     bot.send_message(
         chat_id=call.message.chat.id,
         text='Текущие незакрытые поставки',
-        reply_markup=get_supplies_markup(active_supplies))
+        reply_markup=create_supplies_markup(active_supplies))
 
     bulk_insert_supplies(active_supplies)
 
@@ -170,7 +210,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     bot.send_message(
         chat_id=call.message.chat.id,
         text=f'Последние {number_of_supplies} поставок',
-        reply_markup=get_supplies_markup(supplies))
+        reply_markup=create_supplies_markup(supplies))
 
     bulk_insert_supplies(supplies)
 

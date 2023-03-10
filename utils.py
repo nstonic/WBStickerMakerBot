@@ -9,9 +9,11 @@ from telebot.util import quick_markup
 
 from api.classes import Order, Supply
 from api.methods import get_product, get_stickers
+from db_client import check_user_registration
+from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
 from db_client import set_products_name_and_barcode
-from models import OrderModel, UserModel
+from models import OrderModel
 from stickers import create_stickers
 
 
@@ -19,22 +21,39 @@ class CheckRegistrationError(Exception):
     pass
 
 
-def get_supplies_markup(supplies: list[Supply]):
+def create_supplies_markup(supplies: list[Supply]):
     """Подготавливает кнопки поставок
     @param supplies: список поставок, представленных как результаты парсинга
     запросов к API
     """
     is_done = {0: 'Открыта', 1: 'Закрыта'}
-    supplies_markup = quick_markup({
-        f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}': {
-            'callback_data': f'supply_{supply.supply_id}'}
-        for supply in supplies
-    }, row_width=1)
+    supplies_markup = quick_markup(
+        {
+            f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}': {
+                'callback_data': f'supply_{supply.supply_id}'
+            } for supply in supplies
+        }, row_width=1)
     supplies_markup.add(
         InlineKeyboardButton(
             text='Показать больше поставок',
-            callback_data=f'more_supplies'))
+            callback_data=f'more_supplies'
+        )
+    )
     return supplies_markup
+
+
+def create_orders_markup(orders: list[Order]):
+    """Подготавливает кнопки заказов
+    @param orders: список заказов, представленных как результаты парсинга
+    запросов к API
+    """
+    orders_markup = quick_markup({
+        f'{order.article} | {order.created_at}': {
+            'callback_data': f'order_{order.order_id}'
+        }
+        for order in orders
+    }, row_width=1)
+    return orders_markup
 
 
 def join_orders(orders: list[Order]) -> str:
@@ -48,7 +67,8 @@ def join_orders(orders: list[Order]) -> str:
         articles = [order.article for order in orders]
         joined_orders = '\n'.join(
             [f'{article} - {count}шт.'
-             for article, count in Counter(sorted(articles)).items()])
+             for article, count in Counter(sorted(articles)).items()]
+        )
     else:
         joined_orders = 'В данной поставе нет заказов'
     return joined_orders
@@ -75,7 +95,7 @@ def check_registration(registration_func: Callable):
                     f' А не {type(first_arg)} = {first_arg}'
                 )
 
-            if UserModel.get_or_none(UserModel.id == message.chat.id):
+            if check_user_registration(message.chat.id):
                 return func(*args, **kwargs)
             else:
                 registration_func(message)
@@ -107,7 +127,7 @@ def add_stickers_and_products_to_orders(supply_id: str):
     """Добавляет в заказы данные по товарам и стикерам
     @param supply_id: ID поставки
     """
-    orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
+    orders = select_orders_by_supply(supply_id)
     articles = set([order.product.article for order in orders])
     products = [get_product(article) for article in articles]
     set_products_name_and_barcode(products)
@@ -121,7 +141,7 @@ def prepare_stickers(supply_id: str) -> tuple[str, dict]:
     @param supply_id: ID поставки
     @return: адрес к файлу с архивом
     """
-    orders = OrderModel.select().where(OrderModel.supply_id == supply_id)
+    orders = select_orders_by_supply(supply_id)
     grouped_orders = group_orders_by_article(orders)
     supply_path, stickers_report = create_stickers(grouped_orders, supply_id)
     shutil.make_archive(supply_path, 'zip', supply_path)

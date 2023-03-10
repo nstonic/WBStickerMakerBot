@@ -1,5 +1,5 @@
 from .classes import Supply, Order, Product, Sticker, SupplySticker
-from .requests import get_product_response, get_new_orders_response
+from .requests import get_product_response, get_new_orders_response, add_orders_to_supply_request
 from .requests import get_supply_sticker_response
 from .requests import get_orders_response
 from .requests import get_sticker_response
@@ -99,3 +99,19 @@ def get_new_orders() -> list[Order]:
     """
     response = get_new_orders_response()
     return [Order.parse_obj(order) for order in response.json()['orders']]
+
+
+def add_order_to_supply(supply_id: str, order_id: int) -> int:
+    """
+    Добавляет заказ к поставке.
+    @param order_id: id заказа
+    @param supply_id: id поставки
+    @return: код запроса
+    @raise: HTTPError, WBAPIError
+    """
+    response = add_orders_to_supply_request(supply_id, order_id)
+    if response.status_code == 409:
+        pass
+    else:
+        response.raise_for_status()
+        return True

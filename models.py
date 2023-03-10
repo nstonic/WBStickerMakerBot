@@ -45,7 +45,7 @@ class ProductModel(BaseDbModel):
 class OrderModel(BaseDbModel):
     """Модель заказа"""
     id = IntegerField(primary_key=True)
-    supply = ForeignKeyField(SupplyModel, backref='orders', on_delete='CASCADE')
+    supply = ForeignKeyField(SupplyModel, backref='orders', default=None, null=True)
     product = ForeignKeyField(ProductModel, backref='orders', on_delete='CASCADE')
     sticker = TextField(null=True)
     sticker_path = CharField(max_length=128)
