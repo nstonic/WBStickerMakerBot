@@ -17,7 +17,8 @@ from stickers import save_image_from_str_to_png, rotate_image
 from utils import check_registration
 from utils import delete_temp_sticker_files
 from utils import get_supplies_markup
-from utils import join_orders, add_stickers_and_products_to_orders
+from utils import join_orders
+from utils import add_stickers_and_products_to_orders
 from utils import prepare_stickers
 
 load_dotenv()
@@ -108,7 +109,7 @@ def handle_orders(call: CallbackQuery):
 
     order_markup = quick_markup({
         'Создать стикеры': {'callback_data': f'stickers_for_supply_{supply_id}'},
-        'Отправить в доставку': {'callback_data': f'send_supply_to_deliver_{supply_id}'}
+        'Отправить в доставку': {'callback_data': f'close_supply_{supply_id}'}
     }, row_width=1)
     bot.send_message(
         chat_id=call.message.chat.id,
@@ -232,13 +233,13 @@ def send_stickers(call: CallbackQuery):
         delete_temp_sticker_files()
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('send_supply_to_deliver_'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('close_supply_'))
 @check_registration(ask_for_registration)
 def close_supply(call: CallbackQuery):
     """
     Отправляет поставку в доставку и присылает пользователю QR код
     """
-    supply_id = call.data.lstrip('send_supply_to_deliver_')
+    supply_id = call.data.lstrip('close_supply_')
     try:
         status_code = send_supply_to_deliver(supply_id)
         if status_code != 204:

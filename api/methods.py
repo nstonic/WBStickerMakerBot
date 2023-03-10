@@ -60,7 +60,7 @@ def get_supplies(
 def get_stickers(order_ids: list[int]) -> list[Sticker]:
     """
     Получает и парсит информацию о стикерах с Wildberries
-    @param orders: Заказы полученные из БД
+    @param order_ids: Список id заказов
     @return: список стикеров, представленных как результаты парсинга
     запросов к API
     @raise: HTTPError, WBAPIError
