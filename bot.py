@@ -243,7 +243,7 @@ def close_supply(call: CallbackQuery):
     try:
         status_code = send_supply_to_deliver(supply_id)
         if status_code != 204:
-            raise WBAPIError(message='send_supply_to_deliver', code=status_code)
+            raise WBAPIError(message=call.data, code=status_code)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, call)
         return
