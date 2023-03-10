@@ -8,7 +8,10 @@ from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
-from api.methods import get_orders, get_supplies, send_supply_to_deliver, get_supply_sticker
+from api.methods import get_supply_sticker
+from api.methods import send_supply_to_deliver
+from api.methods import get_supplies
+from api.methods import get_orders
 from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
