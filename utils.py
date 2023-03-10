@@ -15,6 +15,10 @@ from models import OrderModel, UserModel
 from stickers import create_stickers
 
 
+class CheckRegistrationError(Exception):
+    pass
+
+
 def get_supplies_markup(supplies: list[Supply]):
     """Подготавливает кнопки поставок
     @param supplies: список поставок, представленных как результаты парсинга
@@ -22,7 +26,8 @@ def get_supplies_markup(supplies: list[Supply]):
     """
     is_done = {0: 'Открыта', 1: 'Закрыта'}
     supplies_markup = quick_markup({
-        f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}': {'callback_data': f'supply_{supply.supply_id}'}
+        f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}': {
+            'callback_data': f'supply_{supply.supply_id}'}
         for supply in supplies
     }, row_width=1)
     supplies_markup.add(
@@ -64,8 +69,10 @@ def check_registration(registration_func: Callable):
             elif isinstance(first_arg, CallbackQuery):
                 message = first_arg.message
             else:
-                raise TypeError(
-                    'Проверяемая функция должна первым аргументом принимать либо CallbackQuery, либо Message'
+                raise CheckRegistrationError(
+                    f'Проверяемая функция {func.__name__}'
+                    f' должна первым аргументом принимать либо CallbackQuery, либо Message.'
+                    f' А не {type(first_arg)} = {first_arg}'
                 )
 
             if UserModel.get_or_none(UserModel.id == message.chat.id):
@@ -104,7 +111,7 @@ def add_stickers_and_products_to_orders(supply_id: str):
     articles = set([order.product.article for order in orders])
     products = [get_product(article) for article in articles]
     set_products_name_and_barcode(products)
-    stickers = get_stickers(orders)
+    stickers = get_stickers([order.id for order in orders])
     add_stickers_to_db(stickers)
 
 
@@ -121,7 +128,7 @@ def prepare_stickers(supply_id: str) -> tuple[str, dict]:
     return f'{supply_path}.zip', stickers_report
 
 
-def delete_tempfiles():
+def delete_temp_sticker_files():
     """
     Удаляет папки и zip архивы с pdf стикерами
     """
@@ -132,5 +139,3 @@ def delete_tempfiles():
                 shutil.rmtree(path, ignore_errors=True)
             if path.endswith('.zip'):
                 os.remove(path)
-
-
