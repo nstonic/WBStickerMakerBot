@@ -15,18 +15,10 @@ from reportlab.platypus.tables import Table
 from models import OrderModel
 
 
-def save_stickers_to_png(orders: list[OrderModel]):
-    """
-    Сохраняет стикеры заказов в png файл
-    @param orders: Список заказов, полученных из БД
-    """
-    os.makedirs('stickers', exist_ok=True)
-    sticker_pathes = []
-    for order in orders:
-        sticker_in_byte_format = b64decode(order.sticker, validate=True)
-        with open(order.sticker_path, 'wb') as file:
-            file.write(sticker_in_byte_format)
-        sticker_pathes.append(order.sticker_path)
+def save_image_from_str_to_png(image: str, path: str):
+    sticker_in_byte_format = b64decode(image, validate=True)
+    with open(path, 'wb') as file:
+        file.write(sticker_in_byte_format)
 
 
 def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) -> tuple[str, dict]:
@@ -52,7 +44,9 @@ def create_stickers(grouped_orders: dict[str:list[OrderModel]], supply_id: str) 
     for article, orders in grouped_orders.items():
         file_name = sanitize_filename(article.strip())
         output_pdf_path = os.path.join(supply_path, f'{file_name}.pdf')
-        save_stickers_to_png(orders)
+        os.makedirs('stickers', exist_ok=True)
+        for order in orders:
+            save_image_from_str_to_png(order.sticker, order.sticker_path)
         try:
             create_stickers_for_orders(orders, output_pdf_path)
         except TypeError:

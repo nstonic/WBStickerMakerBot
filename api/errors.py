@@ -7,7 +7,7 @@ from requests.exceptions import ChunkedEncodingError
 class WBAPIError(Exception):
     """Исключение для обработки ошибок запроса к API"""
 
-    def __init__(self, message: str, code: str = None):
+    def __init__(self, message: str, code: str | int = None):
         self.message = message
         self.code = code
 

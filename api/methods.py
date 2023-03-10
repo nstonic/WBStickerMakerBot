@@ -1,7 +1,6 @@
-from peewee import ModelSelect
-
-from .classes import Supply, Order, Product, Sticker
+from .classes import Supply, Order, Product, Sticker, SupplySticker
 from .requests import get_product_response
+from .requests import get_supply_sticker_response
 from .requests import get_orders_response
 from .requests import get_sticker_response
 from .requests import get_supplies_response
@@ -58,7 +57,7 @@ def get_supplies(
     return supplies
 
 
-def get_stickers(orders: ModelSelect) -> list[Sticker]:
+def get_stickers(order_ids: list[int]) -> list[Sticker]:
     """
     Получает и парсит информацию о стикерах с Wildberries
     @param orders: Заказы полученные из БД
@@ -66,7 +65,7 @@ def get_stickers(orders: ModelSelect) -> list[Sticker]:
     запросов к API
     @raise: HTTPError, WBAPIError
     """
-    stickers_response = get_sticker_response(list(orders))
+    stickers_response = get_sticker_response(order_ids)
     return [Sticker.parse_obj(sticker) for sticker in stickers_response.json()['stickers']]
 
 
@@ -78,3 +77,14 @@ def send_supply_to_deliver(supply_id: str) -> int:
     @raise: HTTPError, WBAPIError
     """
     return send_deliver_request(supply_id)
+
+
+def get_supply_sticker(supply_id: str) -> SupplySticker:
+    """
+    Отправляет поставку в доставку.
+    @param supply_id: id поставки
+    @return: результат парсинга запроса к API
+    @raise: HTTPError, WBAPIError
+    """
+    response = get_supply_sticker_response(supply_id)
+    return SupplySticker.parse_obj(response.json())

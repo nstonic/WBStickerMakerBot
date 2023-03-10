@@ -31,6 +31,12 @@ class Sticker(BaseModel):
     partB: str
 
 
+class SupplySticker(BaseModel):
+    """Класс для парсинга информации о стикере отгруженной поставки"""
+    barcode: str
+    image_string: str = Field(alias='file')
+
+
 @dataclass
 class Product:
     """Класс для парсинга информации о товаре полученной от API"""

@@ -8,13 +8,14 @@ from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
-from api.methods import get_orders, get_supplies, send_supply_to_deliver
+from api.methods import get_orders, get_supplies, send_supply_to_deliver, get_supply_sticker
 from db_client import bulk_insert_orders
 from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
+from stickers import save_image_from_str_to_png
 from utils import check_registration
-from utils import delete_tempfiles
+from utils import delete_temp_sticker_files
 from utils import get_supplies_markup
 from utils import join_orders, add_stickers_and_products_to_orders
 from utils import prepare_stickers
@@ -39,15 +40,15 @@ def ask_for_registration(message: Message):
     # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
-def send_message_on_error(exception: Exception, call_id: int):
+def send_message_on_error(exception: Exception, call: CallbackQuery):
     """Отправляет сообщение администратору и пользователю при ошибке запроса к API"""
     if isinstance(exception, WBAPIError):
-        bot.answer_callback_query(call_id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
     if isinstance(exception, HTTPError):
-        bot.answer_callback_query(call_id, 'Ошибка сервера. Попробуйте позже')
+        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
     bot.send_message(
         chat_id=os.environ['OWNER_ID'],
-        text=str(exception))
+        text=f'Ошибка у пользователя: {call.message.from_user.id}\n{exception}')
 
 
 @bot.message_handler(commands=['start'])
@@ -74,7 +75,7 @@ def show_active_supplies(call: CallbackQuery):
     try:
         active_supplies = get_supplies()
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.id)
+        send_message_on_error(ex, call)
         return
 
     if active_supplies:
@@ -102,7 +103,7 @@ def handle_orders(call: CallbackQuery):
     try:
         orders = get_orders(supply_id)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.id)
+        send_message_on_error(ex, call)
         return
 
     order_markup = quick_markup({
@@ -159,7 +160,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
             only_active=False,
             number_of_supplies=number_of_supplies)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.id)
+        send_message_on_error(ex, call)
         return
 
     bot.send_message(
@@ -215,7 +216,7 @@ def send_stickers(call: CallbackQuery):
         add_stickers_and_products_to_orders(supply_id)
         sticker_file_name, stickers_report = prepare_stickers(supply_id=supply_id)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.id)
+        send_message_on_error(ex, call)
         return
     else:
         with open(sticker_file_name, 'rb') as file:
@@ -228,26 +229,33 @@ def send_stickers(call: CallbackQuery):
             message_text = f'Стикеры по поставке {supply_id}'
         bot.send_message(call.message.chat.id, message_text)
     finally:
-        delete_tempfiles()
+        delete_temp_sticker_files()
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('send_supply_to_deliver_'))
 @check_registration(ask_for_registration)
-def handle_orders(call: CallbackQuery):
+def close_supply(call: CallbackQuery):
     """
-    Обработчик заказов.
-    Запрашивает заказы по данной поставке, отправляет их одним сообщением клиенту,
-    после чего загружает в базу данных
+    Отправляет поставку в доставку и присылает пользователю QR код поставки
     """
     supply_id = call.data.lstrip('send_supply_to_deliver_')
     try:
         status_code = send_supply_to_deliver(supply_id)
+        if status_code != 204:
+            raise WBAPIError(message='send_supply_to_deliver', code=status_code)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.id)
+        send_message_on_error(ex, call)
         return
-
-    if status_code == 204:
+    else:
         bot.answer_callback_query(call.id, 'Отправлено в доставку')
+        supply_sticker = get_supply_sticker(supply_id)
+        os.makedirs('stickers', exist_ok=True)
+        image_file_path = os.path.join('stickers', f'{supply_id}.png')
+        save_image_from_str_to_png(supply_sticker.image_string, image_file_path)
+        with open(image_file_path, 'rb') as image:
+            bot.send_photo(call.message.chat.id, image)
+    finally:
+        delete_temp_sticker_files()
 
 
 def main():
