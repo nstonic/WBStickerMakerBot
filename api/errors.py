@@ -8,6 +8,7 @@ class WBAPIError(Exception):
     """Исключение для обработки ошибок запроса к API"""
 
     def __init__(self, message: str, code: str | int = None):
+        super().__init__()
         self.message = message
         self.code = code
 
