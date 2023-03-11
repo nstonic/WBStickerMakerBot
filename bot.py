@@ -276,7 +276,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     try:
         supplies = get_supplies(
             only_active=False,
-            number_of_supplies=number_of_supplies)
+            limit=number_of_supplies)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, call.message)
     else:

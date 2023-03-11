@@ -36,12 +36,12 @@ def get_product(article: str) -> Product:
 
 def get_supplies(
         only_active: bool = True,
-        number_of_supplies: int = 50) -> list[Supply]:
+        limit: int = 50) -> list[Supply]:
     """
     Получает и парсит информацию о поставках с Wildberries
     @param only_active: Если True то возвращает только незакрытые поставки,
     в противном случае - все
-    @param number_of_supplies: Максимальное число возвращаемых поставок
+    @param limit: Максимальное число возвращаемых поставок
     @return: список поставок, представленных как результаты парсинга
     запросов к API
     @raise: HTTPError, WBAPIError
@@ -52,7 +52,7 @@ def get_supplies(
         if not supply['done'] or only_active is False:
             supply = Supply.parse_obj(supply)
             supplies.append(supply)
-        if len(supplies) == number_of_supplies:
+        if len(supplies) == limit:
             break
     return supplies
 
