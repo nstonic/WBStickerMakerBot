@@ -1,4 +1,5 @@
 import os
+import re
 
 import telebot
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
-from api.methods import get_orders
+from api.methods import get_orders, add_order_to_supply
 from api.methods import get_supplies
 from api.methods import get_new_orders
 from api.methods import get_supply_sticker
@@ -79,7 +80,7 @@ def start(message: Message):
 @check_registration(ask_for_registration)
 def show_new_orders(call: CallbackQuery):
     """
-    Запрашивает новые заказы, отправляет их одним сообщением клиенту
+    Запрашивает новые заказы, отправляет клиенту в виде кнопок
     """
     try:
         new_orders = get_new_orders()
@@ -107,6 +108,64 @@ def show_order_details(call: CallbackQuery):
     order_id = call.data.lstrip('order_')
     order = get_order_by_id(int(order_id))
     bot.answer_callback_query(call.id, f'Информация по заказу {order.id}')
+    order_markup = quick_markup(
+        {
+            'Перенести в поставку': {'callback_data': f'move_to_supply_{order.id}'}
+        }
+    )
+    bot.send_message(
+        call.message.chat.id,
+        f'Номер заказа: {order.id}\n'
+        f'Поставка: {order.supply}\n'
+        f'Артикул: {order.product.article}\n'
+        f'Создан: {order.created_at}',
+        reply_markup=order_markup
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('move_to_supply_'))
+@check_registration(ask_for_registration)
+def move_order_to_supply(call: CallbackQuery):
+    order_id = call.data.lstrip('move_to_supply_')
+
+    try:
+        active_supplies = get_supplies()
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call)
+        return
+
+    if active_supplies:
+        bot.answer_callback_query(call.id, 'Поставки загружены')
+    else:
+        bot.answer_callback_query(call.id, 'Нет активных поставок')
+
+    bot.send_message(
+        chat_id=call.message.chat.id,
+        text='Выберите поставку',
+        reply_markup=create_supplies_markup(
+            active_supplies,
+            show_more_supplies=False,
+            show_create_new=True,
+            order_to_append=order_id
+        )
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('append_o_to_s_'))
+@check_registration(ask_for_registration)
+def move_order_to_supply(call: CallbackQuery):
+    order_id = re.findall(r'_\d+_', call.data)[0].strip('_')
+    supply_id = call.data.lstrip(f'append_o_to_s_{order_id}_')
+
+    try:
+        status_code = add_order_to_supply(supply_id, order_id)
+        if status_code != 204:
+            raise (WBAPIError(f'Статус запроса: {status_code}'))
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call)
+        return
+    else:
+        bot.answer_callback_query(call.id, 'Заказ добавлен в поставку')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'show_supplies')
