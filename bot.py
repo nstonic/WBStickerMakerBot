@@ -19,7 +19,7 @@ from db_client import bulk_insert_supplies
 from db_client import insert_user
 from db_client import prepare_db
 from stickers import save_image_from_str_to_png, rotate_image
-from utils import add_stickers_and_products_to_orders
+from utils import add_stickers_and_products_to_orders, make_menu_from_list
 from utils import check_registration, create_orders_markup
 from utils import create_supplies_markup
 from utils import delete_temp_sticker_files
@@ -49,26 +49,33 @@ def ask_for_registration(message: Message):
     # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
-def send_message_on_error(exception: Exception, call: CallbackQuery):
+def send_message_on_error(exception: Exception, message: Message):
     """Отправляет сообщение администратору и пользователю при ошибке запроса к API"""
     if isinstance(exception, WBAPIError):
-        bot.answer_callback_query(call.id, 'Что-то пошло не так. Администратор уже разбирается')
+        bot.send_message(
+            chat_id=message.chat.id,
+            text='Что-то пошло не так. Администратор уже разбирается')
     if isinstance(exception, HTTPError):
-        bot.answer_callback_query(call.id, 'Ошибка сервера. Попробуйте позже')
+        bot.send_message(
+            chat_id=message.chat.id,
+            text='Ошибка сервера. Попробуйте позже')
     bot.send_message(
         chat_id=os.environ['OWNER_ID'],
-        text=f'Ошибка у пользователя: {call.message.from_user.id}\n{exception}')
+        text=f'Ошибка у пользователя: {message.from_user.id}\n{exception}')
 
 
 @bot.message_handler(commands=['start'])
 @check_registration(ask_for_registration)
 def start(message: Message):
-    supplies_markup = quick_markup(
-        {
-            'Показать поставки': {'callback_data': 'show_supplies'},
-            'Новые заказы': {'callback_data': 'show_new_orders'}
-        }
+    supplies_markup = make_menu_from_list(
+        ['Показать поставки', 'Новые заказы']
     )
+    # supplies_markup = quick_markup(
+    #     {
+    #         'Показать поставки': {'callback_data': 'show_supplies'},
+    #         'Новые заказы': {'callback_data': 'show_new_orders'}
+    #     }
+    # )
     bot.send_message(
         message.chat.id,
         text='Привет',
@@ -76,26 +83,42 @@ def start(message: Message):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('show_new_orders'))
+@bot.message_handler(regexp='Показать поставки')
 @check_registration(ask_for_registration)
-def show_new_orders(call: CallbackQuery):
+def show_active_supplies(message: Message):
+    """
+    Обработчик поставок.
+    Отображает текущие незакрытые поставки. Загружает их в базу
+    """
+    try:
+        active_supplies = get_supplies()
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, message)
+        return
+
+    bot.send_message(
+        chat_id=message.chat.id,
+        text='Текущие незакрытые поставки',
+        reply_markup=create_supplies_markup(active_supplies))
+
+    bulk_insert_supplies(active_supplies)
+
+
+@bot.message_handler(regexp='Новые заказы')
+@check_registration(ask_for_registration)
+def show_new_orders(message: Message):
     """
     Запрашивает новые заказы, отправляет клиенту в виде кнопок
     """
     try:
         new_orders = get_new_orders()
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, message)
         return
-
-    if new_orders:
-        bot.answer_callback_query(call.id, 'Заказы загружены')
-    else:
-        bot.answer_callback_query(call.id, 'Нет новых заказов')
 
     orders_markup = create_orders_markup(new_orders)
     bot.send_message(
-        call.message.chat.id,
+        message.chat.id,
         'Новые заказы:',
         reply_markup=orders_markup
     )
@@ -131,7 +154,7 @@ def move_order_to_supply(call: CallbackQuery):
     try:
         active_supplies = get_supplies()
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
 
     if active_supplies:
@@ -162,36 +185,10 @@ def move_order_to_supply(call: CallbackQuery):
         if status_code != 204:
             raise (WBAPIError(f'Статус запроса: {status_code}'))
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
     else:
         bot.answer_callback_query(call.id, 'Заказ добавлен в поставку')
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'show_supplies')
-@check_registration(ask_for_registration)
-def show_active_supplies(call: CallbackQuery):
-    """
-    Обработчик поставок.
-    Отображает текущие незакрытые поставки. Загружает их в базу
-    """
-    try:
-        active_supplies = get_supplies()
-    except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
-        return
-
-    if active_supplies:
-        bot.answer_callback_query(call.id, 'Поставки загружены')
-    else:
-        bot.answer_callback_query(call.id, 'Нет активных поставок')
-
-    bot.send_message(
-        chat_id=call.message.chat.id,
-        text='Текущие незакрытые поставки',
-        reply_markup=create_supplies_markup(active_supplies))
-
-    bulk_insert_supplies(active_supplies)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('supply_'))
@@ -206,7 +203,7 @@ def handle_orders(call: CallbackQuery):
     try:
         orders = get_orders(supply_id)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
 
     order_markup = quick_markup({
@@ -263,7 +260,7 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
             only_active=False,
             number_of_supplies=number_of_supplies)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
 
     bot.send_message(
@@ -319,7 +316,7 @@ def send_stickers(call: CallbackQuery):
         add_stickers_and_products_to_orders(supply_id)
         sticker_file_name, stickers_report = prepare_stickers(supply_id=supply_id)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
     else:
         with open(sticker_file_name, 'rb') as file:
@@ -347,7 +344,7 @@ def close_supply(call: CallbackQuery):
         if status_code != 204:
             raise WBAPIError(message=call.data, code=status_code)
     except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call)
+        send_message_on_error(ex, call.message)
         return
     else:
         bot.answer_callback_query(call.id, 'Отправлено в доставку')
