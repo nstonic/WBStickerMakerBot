@@ -1,5 +1,5 @@
 from .classes import Supply, Order, Product, Sticker, SupplySticker
-from .requests import get_product_response, get_new_orders_response, add_orders_to_supply_request
+from .requests import get_product_response, get_new_orders_response, new_supply_response, delete_supply_response
 from .requests import get_supply_sticker_response
 from .requests import get_orders_response
 from .requests import get_sticker_response
@@ -109,5 +109,27 @@ def add_order_to_supply(supply_id: str, order_id: int) -> int:
     @return: код запроса
     @raise: HTTPError, WBAPIError
     """
-    response = add_orders_to_supply_request(supply_id, order_id)
+    response = new_supply_response(supply_id, order_id)
+    return response.status_code
+
+
+def create_new_supply(supply_name: str) -> str:
+    """
+    Добавляет заказ к поставке.
+    @param supply_name: название поставки
+    @return: идентификатор созданной поставки
+    @raise: HTTPError, WBAPIError
+    """
+    response = new_supply_response(supply_name)
+    return response.json()['id']
+
+
+def delete_supply_by_id(supply_id: str) -> int:
+    """
+    Удаляет поставку.
+    @param supply_id: ID поставки
+    @return: статус код запроса
+    @raise: HTTPError, WBAPIError
+    """
+    response = delete_supply_response(supply_id)
     return response.status_code

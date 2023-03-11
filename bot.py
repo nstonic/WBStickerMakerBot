@@ -8,7 +8,7 @@ from telebot.types import Message, CallbackQuery
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
-from api.methods import get_orders, add_order_to_supply
+from api.methods import get_orders, add_order_to_supply, create_new_supply, delete_supply_by_id
 from api.methods import get_supplies
 from api.methods import get_new_orders
 from api.methods import get_supply_sticker
@@ -193,9 +193,7 @@ def append_order_to_supply(call: CallbackQuery):
     supply_id = call.data.lstrip(f'append_o_to_s_{order_id}_')
 
     try:
-        status_code = add_order_to_supply(supply_id, order_id)
-        if status_code != 204:
-            raise (WBAPIError(f'Статус запроса: {status_code}'))
+        add_order_to_supply(supply_id, order_id)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, call.message)
         return
@@ -216,19 +214,27 @@ def handle_orders(call: CallbackQuery):
         orders = get_orders(supply_id)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, call.message)
-        return
+    else:
+        if orders:
+            order_markup = quick_markup({
+                'Создать стикеры': {'callback_data': f'stickers_for_supply_{supply_id}'},
+                'Отправить в доставку': {'callback_data': f'close_supply_{supply_id}'}
+            }, row_width=1)
+            bot.send_message(
+                chat_id=call.message.chat.id,
+                text=f'Заказы по поставке {supply_id}:\n\n{join_orders(orders)}',
+                reply_markup=order_markup)
+        else:
+            order_markup = quick_markup({
+                'Удалить поставку': {'callback_data': f'delete_supply_{supply_id}'}
+            }, row_width=1)
+            bot.send_message(
+                chat_id=call.message.chat.id,
+                text=f'В поставке нет заказов',
+                reply_markup=order_markup)
 
-    order_markup = quick_markup({
-        'Создать стикеры': {'callback_data': f'stickers_for_supply_{supply_id}'},
-        'Отправить в доставку': {'callback_data': f'close_supply_{supply_id}'}
-    }, row_width=1)
-    bot.send_message(
-        chat_id=call.message.chat.id,
-        text=f'Заказы по поставке {supply_id}:\n\n{join_orders(orders)}',
-        reply_markup=order_markup)
-
-    bulk_insert_orders(orders, supply_id)
-    bot.answer_callback_query(call.id, 'Заказы загружены')
+        bulk_insert_orders(orders, supply_id)
+        bot.answer_callback_query(call.id, 'Заказы загружены')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('more_supplies'))
@@ -273,18 +279,47 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
             number_of_supplies=number_of_supplies)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, call.message)
-        return
-
-    bot.send_message(
-        chat_id=call.message.chat.id,
-        text=f'Последние {number_of_supplies} поставок',
-        reply_markup=create_supplies_markup(
-            supplies,
-            show_create_new=True
+    else:
+        bot.send_message(
+            chat_id=call.message.chat.id,
+            text=f'Последние {number_of_supplies} поставок',
+            reply_markup=create_supplies_markup(
+                supplies,
+                show_create_new=True
+            )
         )
-    )
+        bulk_insert_supplies(supplies)
 
-    bulk_insert_supplies(supplies)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('delete_supply_'))
+@check_registration(ask_for_registration)
+def delete_supply(call: CallbackQuery):
+    """
+    Запрашивает имя новой поставки
+    """
+    supply_id = call.data.lstrip('delete_supply_')
+    try:
+        delete_supply_by_id(supply_id)
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call.message)
+    else:
+        bot.answer_callback_query(call.id, 'Поставка удалена')
+
+
+@check_registration(ask_for_registration)
+def create_supply(message: Message):
+    """
+    Создает новую поставку
+    """
+    new_supply_name = message.text
+    try:
+        new_supply_id = create_new_supply(new_supply_name)
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, message)
+    else:
+        bot.send_message(
+            chat_id=message.chat.id,
+            text=f'Новая поставка {new_supply_id} успешно создана')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('register_'))

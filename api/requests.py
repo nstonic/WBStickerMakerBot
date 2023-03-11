@@ -4,10 +4,10 @@ import requests
 from dotenv import load_dotenv
 from requests import Response
 
-from .errors import retry_on_network_error, check_response
+from .errors import retry_on_network_error, check_response, WBAPIError
 
 load_dotenv()
-_headers = {"Authorization": os.environ['WB_API_KEY']}
+_headers = {'Authorization': os.environ['WB_API_KEY']}
 
 
 @retry_on_network_error
@@ -18,17 +18,17 @@ def get_supplies_response() -> Response:
     @raise: HTTPError, WBAPIError
     """
     params = {
-        "limit": 1000,
-        "next": 0}
+        'limit': 1000,
+        'next': 0}
     # Находим последнюю страницу с поставками
     while True:
         response = requests.get(
-            "https://suppliers-api.wildberries.ru/api/v3/supplies",
+            'https://suppliers-api.wildberries.ru/api/v3/supplies',
             headers=_headers,
             params=params)
         check_response(response)
-        if response.json()["supplies"] == params["limit"]:
-            params["next"] = response.json()["next"]
+        if response.json()['supplies'] == params['limit']:
+            params['next'] = response.json()['next']
             continue
         else:
             return response
@@ -43,7 +43,7 @@ def get_orders_response(supply_id: str) -> Response:
     @raise: HTTPError, WBAPIError
     """
     response = requests.get(
-        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders",
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders',
         headers=_headers)
     check_response(response)
     return response
@@ -57,9 +57,9 @@ def get_product_response(article: str) -> Response:
     @return: Response от API
     @raise: HTTPError, WBAPIError
     """
-    request_json = {"vendorCodes": [article]}
+    request_json = {'vendorCodes': [article]}
     response = requests.post(
-        "https://suppliers-api.wildberries.ru/content/v1/cards/filter",
+        'https://suppliers-api.wildberries.ru/content/v1/cards/filter',
         json=request_json,
         headers=_headers)
     check_response(response)
@@ -74,13 +74,13 @@ def get_sticker_response(order_ids: list[int]) -> Response:
     @return: Response от API
     @raise: HTTPError, WBAPIError
     """
-    json_ = {"orders": order_ids}
+    json_ = {'orders': order_ids}
     params = {
-        "type": "png",
-        "width": 58,
-        "height": 40}
+        'type': 'png',
+        'width': 58,
+        'height': 40}
     response = requests.post(
-        "https://suppliers-api.wildberries.ru/api/v3/orders/stickers",
+        'https://suppliers-api.wildberries.ru/api/v3/orders/stickers',
         headers=_headers,
         json=json_,
         params=params)
@@ -97,7 +97,7 @@ def send_deliver_request(supply_id: str) -> int:
     @raise: HTTPError, WBAPIError
     """
     response = requests.patch(
-        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/deliver",
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/deliver',
         headers=_headers)
     response.raise_for_status()
     return response.status_code
@@ -112,11 +112,11 @@ def get_supply_sticker_response(supply_id: str) -> Response:
     @raise: HTTPError, WBAPIError
     """
     params = {
-        "type": "png",
-        "width": 58,
-        "height": 40}
+        'type': 'png',
+        'width': 58,
+        'height': 40}
     response = requests.get(
-        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/barcode",
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/barcode',
         headers=_headers,
         params=params)
     check_response(response)
@@ -131,7 +131,7 @@ def get_new_orders_response() -> Response:
     @raise: HTTPError, WBAPIError
     """
     response = requests.get(
-        f"https://suppliers-api.wildberries.ru/api/v3/orders/new",
+        f'https://suppliers-api.wildberries.ru/api/v3/orders/new',
         headers=_headers)
     check_response(response)
     return response
@@ -140,7 +140,31 @@ def get_new_orders_response() -> Response:
 @retry_on_network_error
 def add_orders_to_supply_request(supply_id: str, order_id: int) -> Response:
     response = requests.patch(
-        f"https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders/{order_id}",
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders/{order_id}',
         headers=_headers)
+    if status_code := response.status_code != 204:
+        raise (WBAPIError(f'Статус запроса: {status_code}'))
+    response.raise_for_status()
+    return response
+
+
+@retry_on_network_error
+def new_supply_response(name: str) -> Response:
+    json_ = {'name': name}
+    response = requests.post(
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies',
+        headers=_headers,
+        json=json_
+    )
+    check_response(response)
+    return response
+
+
+@retry_on_network_error
+def delete_supply_response(supply_id: str) -> Response:
+    response = requests.delete(
+        f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}',
+        headers=_headers
+    )
     response.raise_for_status()
     return response
