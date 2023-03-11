@@ -92,14 +92,11 @@ def join_orders(orders: list[Order]) -> str:
     @return: Строка из объединенных артикулов заказов
     """
 
-    if orders:
-        articles = [order.article for order in orders]
-        joined_orders = '\n'.join(
-            [f'{article} - {count}шт.'
-             for article, count in Counter(sorted(articles)).items()]
-        )
-    else:
-        joined_orders = 'В данной поставе нет заказов'
+    articles = [order.article for order in orders]
+    joined_orders = '\n'.join(
+        [f'{article} - {count}шт.'
+         for article, count in Counter(sorted(articles)).items()]
+    )
     return joined_orders
 
 

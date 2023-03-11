@@ -131,3 +131,9 @@ def check_user_registration(user_id: int) -> UserModel | None:
     @return: Объект пользователя из БД, если пользователь найден, в противном случае None
     """
     return UserModel.get_or_none(UserModel.id == user_id)
+
+
+def delete_supply_from_db(supply_id: str):
+    supply = SupplyModel.get_or_none(SupplyModel.id == supply_id)
+    if supply:
+        supply.delete_instance()

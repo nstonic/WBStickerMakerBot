@@ -13,7 +13,7 @@ from api.methods import get_supplies
 from api.methods import get_new_orders
 from api.methods import get_supply_sticker
 from api.methods import send_supply_to_deliver
-from db_client import bulk_insert_orders
+from db_client import bulk_insert_orders, delete_supply_from_db
 from db_client import get_order_by_id
 from db_client import bulk_insert_supplies
 from db_client import insert_user
@@ -291,19 +291,19 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
         bulk_insert_supplies(supplies)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('delete_supply_'))
+@bot.callback_query_handler(func=lambda call: call.data.startswith('create_supply'))
 @check_registration(ask_for_registration)
 def delete_supply(call: CallbackQuery):
     """
     Запрашивает имя новой поставки
     """
-    supply_id = call.data.lstrip('delete_supply_')
-    try:
-        delete_supply_by_id(supply_id)
-    except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.message)
-    else:
-        bot.answer_callback_query(call.id, 'Поставка удалена')
+    bot.clear_reply_handlers(call.message)
+    bot.register_next_step_handler(
+        call.message,
+        create_supply)
+    bot.send_message(
+        chat_id=call.message.chat.id,
+        text='Введите название новой поставки')
 
 
 @check_registration(ask_for_registration)
@@ -320,6 +320,24 @@ def create_supply(message: Message):
         bot.send_message(
             chat_id=message.chat.id,
             text=f'Новая поставка {new_supply_id} успешно создана')
+        show_active_supplies(message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('delete_supply_'))
+@check_registration(ask_for_registration)
+def delete_supply(call: CallbackQuery):
+    """
+    Удаляет поставку
+    """
+    supply_id = call.data.lstrip('delete_supply_')
+    try:
+        delete_supply_by_id(supply_id)
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call.message)
+    else:
+        delete_supply_from_db(supply_id)
+        bot.answer_callback_query(call.id, 'Поставка удалена')
+        show_active_supplies(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('register_'))
