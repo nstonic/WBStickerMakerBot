@@ -45,8 +45,7 @@ def ask_for_registration(message: Message):
         reply_markup=register_markup)
     bot.send_message(
         chat_id=user_id,
-        text='Бот находится в разработке.')
-    # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
+        text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
 def send_message_on_error(exception: Exception, message: Message):
@@ -70,12 +69,6 @@ def start(message: Message):
     supplies_markup = make_menu_from_list(
         ['Показать поставки', 'Новые заказы']
     )
-    # supplies_markup = quick_markup(
-    #     {
-    #         'Показать поставки': {'callback_data': 'show_supplies'},
-    #         'Новые заказы': {'callback_data': 'show_new_orders'}
-    #     }
-    # )
     bot.send_message(
         message.chat.id,
         text='Привет',
