@@ -110,8 +110,4 @@ def add_order_to_supply(supply_id: str, order_id: int) -> int:
     @raise: HTTPError, WBAPIError
     """
     response = add_orders_to_supply_request(supply_id, order_id)
-    if response.status_code == 409:
-        pass
-    else:
-        response.raise_for_status()
-        return True
+    return response.status_code
