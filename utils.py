@@ -4,7 +4,7 @@ from collections import Counter
 from typing import Callable
 
 from peewee import ModelSelect
-from telebot.types import Message, CallbackQuery, InlineKeyboardButton
+from telebot.types import Message, CallbackQuery, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telebot.util import quick_markup
 
 from api.classes import Order, Supply
@@ -17,8 +17,13 @@ from models import OrderModel
 from stickers import create_stickers
 
 
-class CheckRegistrationError(Exception):
-    pass
+def make_menu_from_list(buttons_title: list, row_width: int = 2) -> ReplyKeyboardMarkup:
+    """Создаёт меню из списка кнопок"""
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = [KeyboardButton(button)
+               for button in buttons_title]
+    markup.add(*buttons, row_width=row_width)
+    return markup
 
 
 def create_supplies_markup(
@@ -104,6 +109,9 @@ def check_registration(registration_func: Callable):
             elif isinstance(first_arg, CallbackQuery):
                 message = first_arg.message
             else:
+                class CheckRegistrationError(Exception):
+                    pass
+
                 raise CheckRegistrationError(
                     f'Проверяемая функция {func.__name__}'
                     f' должна первым аргументом принимать либо CallbackQuery, либо Message.'
