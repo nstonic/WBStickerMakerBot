@@ -13,6 +13,7 @@ db = SqliteDatabase('bot.db')
 
 class BaseDbModel(Model):
     """Базовая модель для БД"""
+
     class Meta:
         database = db
 
@@ -25,6 +26,9 @@ class UserModel(BaseDbModel):
     is_admin = BooleanField(default=False)
     is_active = BooleanField(default=True)
 
+    class Meta:
+        db_table = 'Users'
+
 
 class SupplyModel(BaseDbModel):
     """Модель поставки"""
@@ -34,12 +38,18 @@ class SupplyModel(BaseDbModel):
     created_at = DateTimeField()
     is_done = BooleanField()
 
+    class Meta:
+        db_table = 'Supply'
+
 
 class ProductModel(BaseDbModel):
     """Модель товара"""
     article = CharField(max_length=128, primary_key=True)
     barcode = CharField(max_length=32, null=True)
     name = TextField(null=True)
+
+    class Meta:
+        db_table = 'Products'
 
 
 class OrderModel(BaseDbModel):
@@ -50,3 +60,6 @@ class OrderModel(BaseDbModel):
     sticker = TextField(null=True)
     sticker_path = CharField(max_length=128)
     created_at = DateTimeField()
+
+    class Meta:
+        db_table = 'Orders'
