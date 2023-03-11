@@ -66,6 +66,10 @@ def send_message_on_error(exception: Exception, message: Message):
 @bot.message_handler(commands=['start'])
 @check_registration(ask_for_registration)
 def start(message: Message):
+    """
+    Показывает основное меню
+    @param message:
+    """
     supplies_markup = make_menu_from_list(
         ['Показать поставки', 'Новые заказы']
     )
@@ -92,8 +96,11 @@ def show_active_supplies(message: Message):
     bot.send_message(
         chat_id=message.chat.id,
         text='Текущие незакрытые поставки',
-        reply_markup=create_supplies_markup(active_supplies))
-
+        reply_markup=create_supplies_markup(
+            active_supplies,
+            show_create_new=True
+        )
+    )
     bulk_insert_supplies(active_supplies)
 
 
@@ -121,6 +128,10 @@ def show_new_orders(message: Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 @check_registration(ask_for_registration)
 def show_order_details(call: CallbackQuery):
+    """
+    Показывает детали заказа и прелагает переместить его в поставку
+    @param call:
+    """
     order_id = call.data.lstrip('order_')
     order = get_order_by_id(int(order_id))
     bot.answer_callback_query(call.id, f'Информация по заказу {order.id}')
@@ -142,6 +153,10 @@ def show_order_details(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('move_to_supply_'))
 @check_registration(ask_for_registration)
 def move_order_to_supply(call: CallbackQuery):
+    """
+    Предлагает выбрать поставку, в которую добавится заказ
+    @param call:
+    """
     order_id = call.data.lstrip('move_to_supply_')
 
     try:
@@ -169,7 +184,11 @@ def move_order_to_supply(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('append_o_to_s_'))
 @check_registration(ask_for_registration)
-def move_order_to_supply(call: CallbackQuery):
+def append_order_to_supply(call: CallbackQuery):
+    """
+    Добавляет заказ к поставке
+    @param call:
+    """
     order_id = re.findall(r'_\d+_', call.data)[0].strip('_')
     supply_id = call.data.lstrip(f'append_o_to_s_{order_id}_')
 
@@ -259,7 +278,11 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     bot.send_message(
         chat_id=call.message.chat.id,
         text=f'Последние {number_of_supplies} поставок',
-        reply_markup=create_supplies_markup(supplies))
+        reply_markup=create_supplies_markup(
+            supplies,
+            show_create_new=True
+        )
+    )
 
     bulk_insert_supplies(supplies)
 

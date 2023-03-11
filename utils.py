@@ -18,7 +18,11 @@ from stickers import create_stickers
 
 
 def make_menu_from_list(buttons_title: list, row_width: int = 2) -> ReplyKeyboardMarkup:
-    """Создаёт меню из списка кнопок"""
+    """Создаёт нижнее меню из списка кнопок
+    @param buttons_title: Тексты кнопок
+    @param row_width: Максимальное количество кнопок в строке
+    @return:
+    """
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
     buttons = [KeyboardButton(button)
                for button in buttons_title]
@@ -34,6 +38,11 @@ def create_supplies_markup(
 ):
     """Подготавливает кнопки поставок
     @param supplies: список поставок, представленных как результаты парсинга
+    @param order_to_append: если указано, то callback_data меняется
+     на добавление заказа к поставке - 'append_o_to_s_{order_to_append}_{supply.supply_id}'.
+     В противном случае в callback_data будет отправлен только id поставки - 'supply_{supply.supply_id}'
+    @param show_create_new: добавляет кнопку "Показать больше поставок" в конце списка
+    @param show_more_supplies: добавляет кнопку "Создать новую" в конце списка
     запросов к API
     """
     is_done = {0: 'Открыта', 1: 'Закрыта'}
