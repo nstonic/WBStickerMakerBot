@@ -21,24 +21,39 @@ class CheckRegistrationError(Exception):
     pass
 
 
-def create_supplies_markup(supplies: list[Supply]):
+def create_supplies_markup(
+        supplies: list[Supply],
+        show_more_supplies: bool = True,
+        show_create_new: bool = False,
+        order_to_append: int | str = None
+):
     """Подготавливает кнопки поставок
     @param supplies: список поставок, представленных как результаты парсинга
     запросов к API
     """
     is_done = {0: 'Открыта', 1: 'Закрыта'}
-    supplies_markup = quick_markup(
-        {
-            f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}': {
-                'callback_data': f'supply_{supply.supply_id}'
-            } for supply in supplies
-        }, row_width=1)
-    supplies_markup.add(
-        InlineKeyboardButton(
-            text='Показать больше поставок',
-            callback_data=f'more_supplies'
+    buttons = {}
+    for supply in supplies:
+        callback_data = f'append_o_to_s_{order_to_append}_{supply.supply_id}' \
+            if order_to_append else f'supply_{supply.supply_id}'
+        button_name = f'{supply.name} | {supply.supply_id} | {is_done[supply.is_done]}'
+        buttons[button_name] = {'callback_data': callback_data}
+
+    supplies_markup = quick_markup(buttons, row_width=1)
+    if show_more_supplies:
+        supplies_markup.add(
+            InlineKeyboardButton(
+                text='Показать больше поставок',
+                callback_data=f'more_supplies'
+            )
         )
-    )
+    if show_create_new:
+        supplies_markup.add(
+            InlineKeyboardButton(
+                text='Создать новую',
+                callback_data=f'create_supply'
+            )
+        )
     return supplies_markup
 
 
