@@ -15,9 +15,9 @@ pip install -r requirements.txt
 
 - TG_BOT_TOKEN - токен телеграмм бота, полученный от [BotFather](https://t.me/BotFather)
 - WB_API_KEY - API ключ Wildberries
-- А также данные владельца
-- OWNER_ID = телеграмм id
-- OWNER_FULL_NAME = ФИО
+- А также данные владельца:
+  - OWNER_ID = телеграмм id
+  - OWNER_FULL_NAME = ФИО
 
 ### Как запустить
 
