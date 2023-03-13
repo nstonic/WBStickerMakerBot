@@ -198,7 +198,8 @@ def append_order_to_supply(call: CallbackQuery):
         send_message_on_error(ex, call.message)
         return
     else:
-        bot.answer_callback_query(call.id, 'Заказ добавлен в поставку')
+        bot.answer_callback_query(call.id, 'Добавлено')
+        bot.send_message(call.message.chat.id, 'Заказ добавлен в поставку')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('supply_'))
@@ -301,11 +302,13 @@ def delete_supply(call: CallbackQuery):
     bot.register_next_step_handler(
         call.message,
         create_supply)
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton('Отмена'))
+    cancel_markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    cancel_markup.add(KeyboardButton('Отмена'))
     bot.send_message(
         chat_id=call.message.chat.id,
-        text='Введите название новой поставки')
+        text='Введите название новой поставки',
+        reply_markup=cancel_markup
+    )
 
 
 @check_registration(ask_for_registration)
