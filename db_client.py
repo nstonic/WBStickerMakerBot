@@ -1,5 +1,6 @@
 import os
 
+import pytz
 from peewee import ModelSelect
 
 from api.classes import Supply, Order, Product, Sticker
@@ -70,7 +71,7 @@ def bulk_insert_orders(orders: list[Order], supply_id: str = None):
         orders_data.append(
             [order.order_id,
              product,
-             order.created_at,
+             order.created_at.astimezone(pytz.timezone('Europe/Samara')).strftime('%Y-%m-%d %H:%M:%S'),
              supply_id,
              os.path.join('stickers', f'{order.order_id}.png')])
     order_fields = [

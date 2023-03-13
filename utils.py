@@ -1,14 +1,17 @@
 import os
 import shutil
 from collections import Counter
+from datetime import datetime
 from typing import Callable
 
+import pytz
 from peewee import ModelSelect
 from telebot.types import Message, CallbackQuery, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telebot.util import quick_markup
 
 from api.classes import Order, Supply
 from api.methods import get_product, get_stickers
+from config import TIME_ZONE
 from db_client import check_user_registration
 from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
@@ -76,13 +79,12 @@ def create_orders_markup(orders: list[Order]):
     @param orders: список заказов, представленных как результаты парсинга
     запросов к API
     """
-    orders_markup = quick_markup({
-        f'{order.article} | {order.created_at}': {
+    return quick_markup({
+        f'{order.article} | {convert_to_created_ago(order.created_at)}': {
             'callback_data': f'order_{order.order_id}'
         }
         for order in orders
     }, row_width=1)
-    return orders_markup
 
 
 def join_orders(orders: list[Order]) -> str:
@@ -188,3 +190,16 @@ def delete_temp_sticker_files():
                 shutil.rmtree(path, ignore_errors=True)
             if path.endswith('.zip'):
                 os.remove(path)
+
+
+def convert_to_created_ago(created_at: datetime) -> str:
+    """
+    Высчитывает время пройденное от даты до текущего момента с учётом timezone.
+    @param created_at: момент отсчёта
+    @return: Строка формата HH:MM:SS
+    """
+    created_ago = datetime.now().astimezone(pytz.timezone(TIME_ZONE)) - \
+        created_at.astimezone(pytz.timezone(TIME_ZONE))
+    hours, seconds = divmod(created_ago.seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    return f'{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}'

@@ -8,18 +8,18 @@ from telebot.types import Message, CallbackQuery, KeyboardButton, ReplyKeyboardM
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
+from api.methods import get_new_orders
 from api.methods import get_orders, add_order_to_supply, create_new_supply, delete_supply_by_id
 from api.methods import get_supplies
-from api.methods import get_new_orders
 from api.methods import get_supply_sticker
 from api.methods import send_supply_to_deliver
 from db_client import bulk_insert_orders, delete_supply_from_db
-from db_client import get_order_by_id
 from db_client import bulk_insert_supplies
+from db_client import get_order_by_id
 from db_client import insert_user
 from db_client import prepare_db
 from stickers import save_image_from_str_to_png, rotate_image
-from utils import add_stickers_and_products_to_orders, make_menu_from_list
+from utils import add_stickers_and_products_to_orders, make_menu_from_list, convert_to_created_ago
 from utils import check_registration, create_orders_markup
 from utils import create_supplies_markup
 from utils import delete_temp_sticker_files
@@ -120,7 +120,7 @@ def show_new_orders(message: Message):
     orders_markup = create_orders_markup(new_orders)
     bot.send_message(
         message.chat.id,
-        'Новые заказы:',
+        'Новые заказы:\n(Артикул | Время с момента заказа)',
         reply_markup=orders_markup
     )
     bulk_insert_orders(new_orders)
@@ -146,7 +146,7 @@ def show_order_details(call: CallbackQuery):
         f'Номер заказа: {order.id}\n'
         f'Поставка: {order.supply}\n'
         f'Артикул: {order.product.article}\n'
-        f'Создан: {order.created_at}',
+        f'Время с момента заказа: {convert_to_created_ago(order.created_at)}',
         reply_markup=order_markup
     )
 
