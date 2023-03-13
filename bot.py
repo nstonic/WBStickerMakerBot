@@ -4,7 +4,7 @@ import re
 import telebot
 from dotenv import load_dotenv
 from requests import HTTPError
-from telebot.types import Message, CallbackQuery
+from telebot.types import Message, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup
 from telebot.util import quick_markup
 
 from api.errors import WBAPIError
@@ -63,6 +63,7 @@ def send_message_on_error(exception: Exception, message: Message):
         text=f'Ошибка у пользователя: {message.from_user.id}\n{exception}')
 
 
+@bot.message_handler(regexp='Основное меню')
 @bot.message_handler(commands=['start'])
 @check_registration(ask_for_registration)
 def start(message: Message):
@@ -75,7 +76,7 @@ def start(message: Message):
     )
     bot.send_message(
         message.chat.id,
-        text='Привет',
+        text='Основное меню',
         reply_markup=supplies_markup
     )
 
@@ -176,7 +177,6 @@ def move_order_to_supply(call: CallbackQuery):
         reply_markup=create_supplies_markup(
             active_supplies,
             show_more_supplies=False,
-            show_create_new=True,
             order_to_append=order_id
         )
     )
@@ -301,6 +301,8 @@ def delete_supply(call: CallbackQuery):
     bot.register_next_step_handler(
         call.message,
         create_supply)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton('Отмена'))
     bot.send_message(
         chat_id=call.message.chat.id,
         text='Введите название новой поставки')
@@ -311,9 +313,12 @@ def create_supply(message: Message):
     """
     Создает новую поставку
     """
-    new_supply_name = message.text
+    message_text = message.text
+    if message_text == 'Отмена':
+        start(message)
+        return
     try:
-        new_supply_id = create_new_supply(new_supply_name)
+        new_supply_id = create_new_supply(message_text)
     except (HTTPError, WBAPIError) as ex:
         send_message_on_error(ex, message)
     else:
