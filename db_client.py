@@ -23,7 +23,7 @@ def prepare_db(owner_id: int, owner_full_name: str):
     ).on_conflict_ignore().execute()
 
 
-def insert_user(user_id: int, user_full_name: str) -> UserModel:
+def insert_user(user_id: int | str, user_full_name: str) -> UserModel:
     """Регистрирует пользователя в базе
     @param user_id: Telegram ID пользователя
     @param user_full_name: Полное имя пользователя

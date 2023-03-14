@@ -102,7 +102,7 @@ def get_new_orders() -> list[Order]:
     return [Order.parse_obj(order) for order in response.json()['orders']]
 
 
-def add_order_to_supply(supply_id: str, order_id: int) -> int:
+def add_order_to_supply(supply_id: str, order_id: int | str) -> int:
     """
     Добавляет заказ к поставке.
     @param order_id: id заказа

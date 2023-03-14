@@ -138,7 +138,7 @@ def get_new_orders_response() -> Response:
 
 
 @retry_on_network_error
-def add_orders_to_supply_request(supply_id: str, order_id: int) -> Response:
+def add_orders_to_supply_request(supply_id: str, order_id: int | str) -> Response:
     response = requests.patch(
         f'https://suppliers-api.wildberries.ru/api/v3/supplies/{supply_id}/orders/{order_id}',
         headers=_headers)
