@@ -45,7 +45,8 @@ def ask_for_registration(message: Message):
         reply_markup=register_markup)
     bot.send_message(
         chat_id=user_id,
-        text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
+        text='Бот находится в разработке')
+    # text='Запрос на регистрацию отправлен администратору. Ожидайте ответа.')
 
 
 def send_message_on_error(exception: Exception, message: Message):
