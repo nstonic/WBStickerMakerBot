@@ -35,7 +35,7 @@ def ask_for_registration(message: Message):
     user_id = message.chat.id
     register_markup = quick_markup(
         {
-            'Одобрить': {'callback_data': f'register_{user_id}'},
+            'Одобрить': {'callback_data': f'register_{user_id}_{message.from_user.full_name}'},
             'Отказать': {'callback_data': f'deny_{user_id}'}
         }
     )
@@ -190,7 +190,7 @@ def append_order_to_supply(call: CallbackQuery):
     Добавляет заказ к поставке
     @param call:
     """
-    order_id = re.findall(r'_\d+_', call.data)[0].strip('_')
+    order_id = re.search(r'_\d+_', call.data).group().strip('_')
     supply_id = call.data.lstrip(f'append_o_to_s_{order_id}_')
 
     try:
@@ -355,10 +355,11 @@ def register_user(call: CallbackQuery):
     """
     Регистрирует пользователя
     """
-    user_id = int(call.data.lstrip('register_'))
+    user_id = re.search(r'_\d+_', call.data).group().strip('_')
+    user_full_name = call.data.lstrip(f'register_{user_id}_')
     insert_user(
         user_id=user_id,
-        user_full_name=call.from_user.full_name)
+        user_full_name=user_full_name)
     bot.answer_callback_query(
         call.id,
         text='Пользователь зарегистрирован')
