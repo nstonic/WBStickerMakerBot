@@ -4,17 +4,15 @@ from collections import Counter
 from datetime import datetime
 from typing import Callable
 
-import pytz
 from peewee import ModelSelect
 from telebot.types import Message, CallbackQuery, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telebot.util import quick_markup
 
 from api.classes import Order, Supply
 from api.methods import get_product, get_stickers
-from config import TIME_ZONE
+from db_client import add_stickers_to_db
 from db_client import check_user_registration
 from db_client import select_orders_by_supply
-from db_client import add_stickers_to_db
 from db_client import set_products_name_and_barcode
 from models import OrderModel
 from stickers import create_stickers
@@ -194,12 +192,11 @@ def delete_temp_sticker_files():
 
 def convert_to_created_ago(created_at: datetime) -> str:
     """
-    Высчитывает время пройденное от даты до текущего момента с учётом timezone.
+    Высчитывает время пройденное от даты до текущего момента.
     @param created_at: момент отсчёта
     @return: Строка формата HH:MM:SS
     """
-    created_ago = datetime.now().astimezone(pytz.timezone(TIME_ZONE)) - \
-                  created_at.astimezone(pytz.timezone(TIME_ZONE))
+    created_ago = datetime.now() - created_at
     hours, seconds = divmod(created_ago.seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
     return f'{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}'
