@@ -13,7 +13,7 @@ from api.methods import get_orders, add_order_to_supply, create_new_supply, dele
 from api.methods import get_supplies
 from api.methods import get_supply_sticker
 from api.methods import send_supply_to_deliver
-from db_client import bulk_insert_orders, delete_supply_from_db
+from db_client import bulk_insert_orders, delete_supply_from_db, get_user
 from db_client import bulk_insert_supplies
 from db_client import get_order_by_id
 from db_client import insert_user
@@ -72,9 +72,11 @@ def start(message: Message):
     Показывает основное меню
     @param message:
     """
-    supplies_markup = make_menu_from_list(
-        ['Показать поставки', 'Новые заказы']
-    )
+    user = get_user(message.chat.id)
+    buttons = ['Показать поставки', 'Новые заказы']
+    if user.is_admin:
+        buttons.append('Управление пользователями')
+    supplies_markup = make_menu_from_list(buttons)
     bot.send_message(
         message.chat.id,
         text='Основное меню',
@@ -251,9 +253,13 @@ def get_supplies_number(call: CallbackQuery):
         call.message,
         show_number_of_supplies,
         call=call)
+    cancel_markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    cancel_markup.add(KeyboardButton('Отмена'))
     bot.send_message(
         chat_id=call.message.chat.id,
-        text='Сколько последних поставок вы хотите посмотреть? (максимум 50)')
+        text='Сколько последних поставок вы хотите посмотреть? (максимум 50)',
+        reply_markup=cancel_markup
+    )
 
 
 @check_registration(ask_for_registration)
@@ -261,8 +267,13 @@ def show_number_of_supplies(message: Message, call: CallbackQuery):
     """
     Отображает требуемое число поставок, начиная с самых поздних
     """
+    message_text = message.text
+    if message_text == 'Отмена':
+        start(message)
+        return
+
     try:
-        number_of_supplies = int(message.text)
+        number_of_supplies = int(message_text)
     except ValueError:
         bot.clear_reply_handlers(call.message)
         bot.register_next_step_handler(
