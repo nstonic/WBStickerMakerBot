@@ -40,6 +40,13 @@ def get_user(user_id: int | str) -> UserModel:
     return UserModel.get_or_none(UserModel.id == user_id)
 
 
+def get_all_users() -> ModelSelect:
+    """Достает всех пользователей из базы
+    @return: Объект пользователя из БД
+    """
+    return UserModel.select()
+
+
 def bulk_insert_supplies(supplies: list[Supply]):
     """Добавляет поставки в базу
     @param supplies: список поставок, представленных как результаты парсинга
@@ -134,11 +141,14 @@ def get_order_by_id(order_id: int) -> OrderModel | None:
     return OrderModel.get_or_none(OrderModel.id == order_id)
 
 
-def check_user_registration(user_id: int) -> UserModel | None:
+def check_user_registration(user_id: int, is_admin: bool = False) -> UserModel | None:
     """Проверяет зарегистрирован ли пользователь в БД
     @param user_id: Telegram ID пользователя
+    @param is_admin: Если True, то возвращается пользователь, только если он администратор
     @return: Объект пользователя из БД, если пользователь найден, в противном случае None
     """
+    if is_admin:
+        return UserModel.get_or_none(UserModel.id == user_id, UserModel.is_admin is True)
     return UserModel.get_or_none(UserModel.id == user_id)
 
 

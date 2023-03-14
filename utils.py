@@ -12,7 +12,7 @@ from telebot.util import quick_markup
 from api.classes import Order, Supply
 from api.methods import get_product, get_stickers
 from config import TIME_ZONE
-from db_client import check_user_registration
+from db_client import check_user_registration, check_admin
 from db_client import select_orders_by_supply
 from db_client import add_stickers_to_db
 from db_client import set_products_name_and_barcode
@@ -102,11 +102,11 @@ def join_orders(orders: list[Order]) -> str:
     return joined_orders
 
 
-def check_registration(registration_func: Callable):
+def check_registration(alternative_func: Callable, is_admin: bool = False):
     """Декоратор проверяет регистрацию пользователя, отправившего сообщение.
-     Если пользователь не зарегистрирован, то запускает процесс регистрации.
-     @param registration_func: Функция, которую следует вызвать, если пользователь
-     не зарегистрирован. Она должна принимать в качестве аргумента Message"""
+     @param alternative_func: Функция, которую следует вызвать, если проверка не пройдена.
+    Она должна принимать в качестве аргумента Message
+    @param is_admin: Если True, то проверяются права администратора"""
 
     def check_registration_decorator(func: Callable):
 
@@ -126,10 +126,10 @@ def check_registration(registration_func: Callable):
                     f' А не {type(first_arg)} = {first_arg}'
                 )
 
-            if check_user_registration(message.chat.id):
+            if check_user_registration(message.chat.id, is_admin):
                 return func(*args, **kwargs)
             else:
-                registration_func(message)
+                alternative_func(message)
 
         return wrapper
 
@@ -199,7 +199,7 @@ def convert_to_created_ago(created_at: datetime) -> str:
     @return: Строка формата HH:MM:SS
     """
     created_ago = datetime.now().astimezone(pytz.timezone(TIME_ZONE)) - \
-        created_at.astimezone(pytz.timezone(TIME_ZONE))
+                  created_at.astimezone(pytz.timezone(TIME_ZONE))
     hours, seconds = divmod(created_ago.seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
     return f'{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}'

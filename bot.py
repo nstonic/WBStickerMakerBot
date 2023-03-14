@@ -13,7 +13,7 @@ from api.methods import get_orders, add_order_to_supply, create_new_supply, dele
 from api.methods import get_supplies
 from api.methods import get_supply_sticker
 from api.methods import send_supply_to_deliver
-from db_client import bulk_insert_orders, delete_supply_from_db, get_user
+from db_client import bulk_insert_orders, delete_supply_from_db, get_user, get_all_users
 from db_client import bulk_insert_supplies
 from db_client import get_order_by_id
 from db_client import insert_user
@@ -62,6 +62,60 @@ def send_message_on_error(exception: Exception, message: Message):
     bot.send_message(
         chat_id=os.environ['OWNER_ID'],
         text=f'Ошибка у пользователя: {message.from_user.id}\n{exception}')
+
+
+def send_message_on_rights_error(message: Message):
+    """Отправляет сообщение администратору и пользователю при ошибке запроса к API"""
+    pass
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('register_'))
+@check_registration(ask_for_registration)
+def register_user(call: CallbackQuery):
+    """
+    Регистрирует пользователя
+    """
+    user_id = re.search(r'_\d+_', call.data).group().strip('_')
+    user_full_name = call.data.lstrip(f'register_{user_id}_')
+    insert_user(
+        user_id=user_id,
+        user_full_name=user_full_name)
+    bot.answer_callback_query(
+        call.id,
+        text='Пользователь зарегистрирован')
+    bot.send_message(
+        user_id,
+        text='Ваша регистрация одобрена. Можно начать работать.\n/start')
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('deny_'))
+@check_registration(ask_for_registration)
+def deny_registration(call: CallbackQuery):
+    """
+    Отклоняет запрос регистрации
+    """
+    user_id = call.data.lstrip('deny_')
+    bot.answer_callback_query(
+        call.id,
+        text='Регистрация отклонена')
+    bot.send_message(
+        int(user_id),
+        text='Ваш запрос на регистрацию отклонен')
+
+
+@bot.message_handler(regexp='Управление пользователями')
+@check_registration(send_message_on_rights_error, is_admin=True)
+def start(message: Message):
+    """
+    Показывает меню управления пользователями
+    @param message:
+    """
+    users = (user.full_name for user in get_all_users())
+    joined_users = "\n".join(users)
+    bot.send_message(
+        message.chat.id,
+        text=f'Все пользователи:\n{joined_users}'
+    )
 
 
 @bot.message_handler(regexp='Основное меню')
@@ -360,68 +414,6 @@ def delete_supply(call: CallbackQuery):
         show_active_supplies(call.message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('register_'))
-@check_registration(ask_for_registration)
-def register_user(call: CallbackQuery):
-    """
-    Регистрирует пользователя
-    """
-    user_id = re.search(r'_\d+_', call.data).group().strip('_')
-    user_full_name = call.data.lstrip(f'register_{user_id}_')
-    insert_user(
-        user_id=user_id,
-        user_full_name=user_full_name)
-    bot.answer_callback_query(
-        call.id,
-        text='Пользователь зарегистрирован')
-    bot.send_message(
-        user_id,
-        text='Ваша регистрация одобрена. Можно начать работать.\n/start')
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('deny_'))
-@check_registration(ask_for_registration)
-def deny_registration(call: CallbackQuery):
-    """
-    Отклоняет запрос регистрации
-    """
-    user_id = call.data.lstrip('deny_')
-    bot.answer_callback_query(
-        call.id,
-        text='Регистрация отклонена')
-    bot.send_message(
-        int(user_id),
-        text='Ваш запрос на регистрацию отклонен')
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
-@check_registration(ask_for_registration)
-def send_stickers(call: CallbackQuery):
-    """
-    Подготавливает и отправляет пользователю стикеры по данной поставке
-    """
-    supply_id = call.data.lstrip('stickers_for_supply_')
-    bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
-    try:
-        add_stickers_and_products_to_orders(supply_id)
-        sticker_file_name, stickers_report = prepare_stickers(supply_id=supply_id)
-    except (HTTPError, WBAPIError) as ex:
-        send_message_on_error(ex, call.message)
-        return
-    else:
-        with open(sticker_file_name, 'rb') as file:
-            bot.send_document(call.message.chat.id, file)
-        if failed_stickers := stickers_report['failed']:
-            missing_articles = "\n".join(failed_stickers)
-            message_text = f'Стикеры по поставке {supply_id}.\n' \
-                           f'Не удалось создать стикеры для товаров:\n{missing_articles}'
-        else:
-            message_text = f'Стикеры по поставке {supply_id}'
-        bot.send_message(call.message.chat.id, message_text)
-    finally:
-        delete_temp_sticker_files()
-
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith('close_supply_'))
 @check_registration(ask_for_registration)
 def close_supply(call: CallbackQuery):
@@ -448,6 +440,34 @@ def close_supply(call: CallbackQuery):
         rotate_image(image_file_path)
         with open(image_file_path, 'rb') as image:
             bot.send_photo(call.message.chat.id, image)
+    finally:
+        delete_temp_sticker_files()
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('stickers_for_supply_'))
+@check_registration(ask_for_registration)
+def send_stickers(call: CallbackQuery):
+    """
+    Подготавливает и отправляет пользователю стикеры по данной поставке
+    """
+    supply_id = call.data.lstrip('stickers_for_supply_')
+    bot.answer_callback_query(call.id, 'Запущена подготовка стикеров. Подождите')
+    try:
+        add_stickers_and_products_to_orders(supply_id)
+        sticker_file_name, stickers_report = prepare_stickers(supply_id=supply_id)
+    except (HTTPError, WBAPIError) as ex:
+        send_message_on_error(ex, call.message)
+        return
+    else:
+        with open(sticker_file_name, 'rb') as file:
+            bot.send_document(call.message.chat.id, file)
+        if failed_stickers := stickers_report['failed']:
+            missing_articles = "\n".join(failed_stickers)
+            message_text = f'Стикеры по поставке {supply_id}.\n' \
+                           f'Не удалось создать стикеры для товаров:\n{missing_articles}'
+        else:
+            message_text = f'Стикеры по поставке {supply_id}'
+        bot.send_message(call.message.chat.id, message_text)
     finally:
         delete_temp_sticker_files()
 
