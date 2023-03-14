@@ -148,7 +148,7 @@ def check_user_registration(user_id: int, is_admin: bool = False) -> UserModel |
     @return: Объект пользователя из БД, если пользователь найден, в противном случае None
     """
     if is_admin:
-        return UserModel.get_or_none(UserModel.id == user_id, UserModel.is_admin is True)
+        return UserModel.get_or_none(UserModel.id == user_id, UserModel.is_admin == True)
     return UserModel.get_or_none(UserModel.id == user_id)
 
 
