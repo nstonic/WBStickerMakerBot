@@ -32,6 +32,14 @@ def insert_user(user_id: int | str, user_full_name: str) -> UserModel:
     return UserModel.insert(id=user_id, full_name=user_full_name).on_conflict_replace().execute()
 
 
+def get_user(user_id: int | str) -> UserModel:
+    """Достает пользователя из базы
+    @param user_id: Telegram ID пользователя
+    @return: Объект пользователя из БД
+    """
+    return UserModel.get_or_none(UserModel.id == user_id)
+
+
 def bulk_insert_supplies(supplies: list[Supply]):
     """Добавляет поставки в базу
     @param supplies: список поставок, представленных как результаты парсинга
